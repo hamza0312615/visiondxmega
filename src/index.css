@@ -100,3 +100,43 @@
 .animate-spin-slow {
   animation: spin-slow 12s linear infinite;
 }
+
+/* ── Google Translate Native Integrations ── */
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner,
+.goog-te-balloon-frame,
+#goog-gt-tt,
+.goog-te-tooltip,
+.goog-te-menu-value span:last-child {
+  display: none !important;
+}
+
+body {
+  top: 0px !important;
+}
+
+.goog-logo-link {
+  display: none !important;
+}
+
+.goog-te-gadget {
+  font-size: 0px !important;
+  color: transparent !important;
+}
+
+.goog-te-gadget .goog-logo-link {
+  display: none !important;
+}
+
+.goog-te-gadget span {
+  display: none !important;
+}
+
+#google_translate_element {
+  display: none !important;
+}
+
+/* Adjust font scaling when Urdu is active for readability */
+html[lang="ur"] *, html:has(.translated-ltr) * {
+  font-family: 'Outfit', 'Inter', 'Noto Nastaliq Urdu', sans-serif !important;
+}

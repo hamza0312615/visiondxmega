@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { transcribeAudio, analyzeText } from '../utils/groqApi'
-import { saveResult } from '../utils/localStorage'
+import { saveResult, isDemoMode, setDemoMode, getDemoData } from '../utils/localStorage'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
+import Skeleton from '../components/Skeleton'
 
 export default function CoughDetector() {
   const [recording, setRecording] = useState(false)
@@ -18,6 +19,25 @@ export default function CoughDetector() {
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
   const timerIntervalRef = useRef(null)
+
+  useEffect(() => {
+    const runDemo = async () => {
+      if (isDemoMode()) {
+        setDemoMode(false) // Disable global demo mode immediately to prevent recurrent loops
+        const demoInfo = getDemoData('cough')
+        
+        const blob = await fetch("data:audio/wav;base64," + demoInfo.base64).then(res => res.blob())
+        const file = new File([blob], demoInfo.fileName, { type: "audio/wav" })
+        setAudioFile(file)
+        setAudioFileName(demoInfo.fileName)
+        
+        setTimeout(() => {
+          processAudio(file)
+        }, 1200)
+      }
+    }
+    runDemo()
+  }, [])
 
   const startRecording = async () => {
     setError('')
@@ -168,7 +188,12 @@ export default function CoughDetector() {
       )}
 
       {loading ? (
-        <LoadingSpinner message={loadingMsg} />
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold animate-pulse shadow-glow flex items-center gap-2">
+            <span>🔬</span> {loadingMsg}
+          </div>
+          <Skeleton />
+        </div>
       ) : currentResult ? (
         <div className="space-y-8 fade-in">
           <ResultCard data={currentResult} />

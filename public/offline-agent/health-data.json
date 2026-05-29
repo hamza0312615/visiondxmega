@@ -1,0 +1,132 @@
+{
+  "diseases": [
+    {
+      "id": "fever", "name": "Bukhar / بخار (Fever)", "nameEn": "Fever",
+      "symptoms": ["bukhar", "fever", "garam", "hot", "temperature", "بخار", "گرم"],
+      "causes": "Infection, viral illness, bacterial infection, malaria, dengue, typhoid.",
+      "firstAid": "Rest karo, pani piyo (8+ glasses daily), paracetamol lo agar doctor ne diya ho. Kapra thanda paani mein bheego kar mathay par rakho. Agar 3 din se zyada rahe ya 104°F se zyada ho toh doctor ke paas jao.",
+      "firstAidEn": "Rest well, drink plenty of water (8+ glasses daily). Use paracetamol if prescribed. Apply cool wet cloth on forehead. See doctor if fever lasts 3+ days or exceeds 104°F.",
+      "urgency": "medium", "emoji": "🌡️",
+      "doList": ["Pani piyo", "Rest karo", "Kapron se dhakein", "Temperature check karo"],
+      "dontList": ["Thanda paani se nahao nahi", "Akele mat choro", "Sardi mein mat baithao"]
+    },
+    {
+      "id": "diarrhea", "name": "Dast / دست (Diarrhea)", "nameEn": "Diarrhea",
+      "symptoms": ["dast", "diarrhea", "loose motion", "pait", "دست", "پیٹ درد", "qay"],
+      "causes": "Contaminated water/food, bacterial infection, rotavirus, cholera.",
+      "firstAid": "ORS (Oral Rehydration Solution) piyo — 1 litre paani mein 6 chamach cheeni + 1 chamach namak. Har dast ke baad 1 glass piyo. Sada khana khao (chawal, kela, toast).",
+      "firstAidEn": "Drink ORS — mix 6 tsp sugar + 1 tsp salt in 1 litre clean water. Drink 1 glass after each loose stool. Eat bland foods (rice, banana, toast). See doctor if blood in stool or dehydration signs.",
+      "urgency": "high", "emoji": "🚨",
+      "doList": ["ORS piyo", "Haath dhohay", "Saaf paani piyo", "Rest karo"],
+      "dontList": ["Masaledaar khana mat khao", "Dhoop mein mat jao", "Paani band mat karo"]
+    },
+    {
+      "id": "cough", "name": "Khansi / کھانسی (Cough)", "nameEn": "Cough",
+      "symptoms": ["khansi", "cough", "khansna", "saans", "کھانسی", "chest", "seena"],
+      "causes": "Cold, flu, allergies, asthma, TB, dust exposure.",
+      "firstAid": "Garam paani mein shahad (honey) aur adrak mila kar piyo. Steam lo (sar kapre se dhak kar garam paani ke upar jhukein). Agar 2 hafte se zyada rahe ya khoon aaye toh doctor ke paas jao.",
+      "firstAidEn": "Drink warm water with honey and ginger. Take steam inhalation. Rest voice. See doctor if cough persists 2+ weeks or blood appears.",
+      "urgency": "low", "emoji": "😷",
+      "doList": ["Garam paani piyo", "Steam lo", "Rest karo", "Shahad piyo"],
+      "dontList": ["Thanda paani mat piyo", "Dhool mein mat jao", "Dhuan mat piyo"]
+    },
+    {
+      "id": "stomach_pain", "name": "Pait Dard / پیٹ درد (Stomach Pain)", "nameEn": "Stomach Pain",
+      "symptoms": ["pait", "pet", "stomach", "dard", "pain", "پیٹ", "درد", "ulcer", "gas"],
+      "causes": "Indigestion, gastritis, food poisoning, appendicitis, ulcer.",
+      "firstAid": "Pait par garam bottel rakho. Light khana khao. Agar dard zyada ho ya ulti aaye toh doctor ke paas jao. Appendix dard ke liye seedha hospital jao.",
+      "firstAidEn": "Apply warm compress to stomach. Eat light food. Drink ginger tea. Go to hospital immediately if pain is severe, has fever, or is in lower right side (appendix).",
+      "urgency": "medium", "emoji": "🤢",
+      "doList": ["Garam paani piyo", "Halka khana khao", "Rest karo", "Adrak ki chai piyo"],
+      "dontList": ["Tez masala mat khao", "Zyada mat khao", "Alcohol mat lo"]
+    },
+    {
+      "id": "headache", "name": "Sar Dard / سر درد (Headache)", "nameEn": "Headache",
+      "symptoms": ["sar dard", "headache", "sir", "سر درد", "migraine", "head"],
+      "causes": "Dehydration, stress, migraine, high BP, eye strain, sinusitis.",
+      "firstAid": "Andheri jagah mein lete jao. Paani piyo (aksar dehydration se hota hai). Thanda kapra mathay par rakho. Agar achanak bahut zyada sar dard ho toh EMERGENCY — hospital jao.",
+      "firstAidEn": "Rest in a dark quiet room. Drink water — dehydration is common cause. Apply cold compress to forehead. EMERGENCY: sudden severe headache needs immediate hospital visit.",
+      "urgency": "low", "emoji": "🤕",
+      "doList": ["Pani piyo", "Andheri jagah mein lete jao", "Thanda kapra rakho", "Rest karo"],
+      "dontList": ["Screen mat dekho", "Zyada roshni mein mat jao", "Shor wali jagah mat jao"]
+    },
+    {
+      "id": "chest_pain", "name": "Seena Dard / سینہ درد (Chest Pain)", "nameEn": "Chest Pain",
+      "symptoms": ["seena", "chest", "dil", "heart", "سینہ", "دل", "pain left arm", "dard"],
+      "causes": "Heart attack, angina, gas, anxiety, muscle pain.",
+      "firstAid": "⚠️ EMERGENCY! Agar seena dard ke saath haath mein dard, saans phoolna, ya pasina aaye — AMBULANCE BULAO FORAN. Mariz ko lita do, tight kapre dheele karo. Aspirin deni ho toh sirf agar doctor ne kaha ho.",
+      "firstAidEn": "⚠️ EMERGENCY! If chest pain with arm pain, breathlessness, or sweating — CALL AMBULANCE NOW. Lay patient down, loosen tight clothing. Do not give food or water.",
+      "urgency": "emergency", "emoji": "🚨",
+      "doList": ["Ambulance bulao", "Lita do", "Kapre dheele karo", "Hawa do"],
+      "dontList": ["Delay mat karo", "Akela mat choro", "Khana mat do", "Paani mat do"]
+    },
+    {
+      "id": "cut_wound", "name": "Zakhm / زخم (Cut/Wound)", "nameEn": "Cut or Wound",
+      "symptoms": ["zakhm", "wound", "cut", "khoon", "blood", "زخم", "خون", "injury"],
+      "causes": "Accident, knife cut, fall, animal bite.",
+      "firstAid": "Saaf kapre se dabaao (5-10 minute). Zakhm saaf paani se dho. Dettol ya antiseptic lagao. Bandage karo. Agar khoon ruk na rahe ya gehri chot ho toh hospital jao. Kutte ke kaatne par rabies injection zaroori hai.",
+      "firstAidEn": "Press clean cloth firmly for 5-10 minutes to stop bleeding. Wash wound with clean water. Apply antiseptic (Dettol). Bandage. Hospital needed for deep wounds, uncontrolled bleeding, or dog bites (rabies injection required).",
+      "urgency": "medium", "emoji": "🩹",
+      "doList": ["Dabaao", "Saaf paani se dho", "Dettol lagao", "Bandage karo"],
+      "dontList": ["Mitti mat lagao", "Phoonkao mat", "Gandha kapra mat lagao"]
+    },
+    {
+      "id": "snake_bite", "name": "Saanp ka Katna / سانپ کا کاٹنا (Snake Bite)", "nameEn": "Snake Bite",
+      "symptoms": ["saanp", "snake", "katna", "سانپ", "bite", "zeher", "venom"],
+      "causes": "Venomous or non-venomous snake bite.",
+      "firstAid": "🚨 EMERGENCY! Mariz ko hilne mat do. Kaate gaye hisse ko dil ke nichay rakho. Tight kapre aur gehne utaaro. FORAN hospital le jao — anti-venom sirf hospital mein milta hai. Zakhm katna ya zeher choosna BILKUL NAHI.",
+      "firstAidEn": "🚨 EMERGENCY! Keep patient calm and still. Keep bitten limb below heart level. Remove tight clothing/jewelry. GET TO HOSPITAL IMMEDIATELY — antivenom only available there. Do NOT cut wound or suck venom.",
+      "urgency": "emergency", "emoji": "🐍",
+      "doList": ["Hospital le jao FORAN", "Hilne mat do", "Kapre utaaro", "Shant rakho"],
+      "dontList": ["Katna NAHI", "Choosna NAHI", "Baandhna NAHI", "Deri mat karo"]
+    },
+    {
+      "id": "burn", "name": "Jalana / جلنا (Burns)", "nameEn": "Burns",
+      "symptoms": ["jalna", "burn", "آگ", "fire", "garam", "jalana", "جلنا", "hot water"],
+      "causes": "Fire, hot water, steam, electrical, chemical burns.",
+      "firstAid": "Foran thanda (not ice) paani chalate paani ke neeche 20 minute rakho. Kapre mat utaaro agar chipak gaye hon. Saaf kapre se dhakein. Hospital jao agar zyada bada jala ho ya chehra/haath/private parts jale hon.",
+      "firstAidEn": "Immediately run cool (not ice) water over burn for 20 minutes. Do not remove stuck clothing. Cover with clean cloth. Hospital needed for large burns, face/hands/genitals, or chemical burns.",
+      "urgency": "high", "emoji": "🔥",
+      "doList": ["Thanda paani chalao", "Saaf kapre se dhakein", "Hospital jao"],
+      "dontList": ["Baraf mat lagao", "Makkhan mat lagao", "Chipka kapra mat utaaro", "Dabaao mat"]
+    },
+    {
+      "id": "malaria", "name": "Malaria / ملیریا", "nameEn": "Malaria",
+      "symptoms": ["malaria", "ملیریا", "thakan", "shivering", "kapkapi", "paleness", "anemia"],
+      "causes": "Mosquito bite (Anopheles mosquito carrying Plasmodium parasite).",
+      "firstAid": "Doctor ke paas jao ZAROOR — malaria ka blood test (RDT) karwao. Bukhar ke liye paracetamol lo. Pani piyo. Machhar dani (mosquito net) istemal karo. Khud se chloroquine mat lo bina test ke.",
+      "firstAidEn": "See doctor for malaria rapid diagnostic test (RDT). Take paracetamol for fever. Drink plenty of water. Use mosquito net. Do NOT self-medicate with antimalarials without test.",
+      "urgency": "high", "emoji": "🦟",
+      "doList": ["Blood test karwao", "Doctor ke paas jao", "Machhar dani lagao", "Pani piyo"],
+      "dontList": ["Khud se dawai mat lo", "Delay mat karo", "Dhoop mein mat jao"]
+    },
+    {
+      "id": "dehydration", "name": "Pani ki Kami / پانی کی کمی (Dehydration)", "nameEn": "Dehydration",
+      "symptoms": ["pani", "thirst", "pyaas", "پیاس", "dry mouth", "dark urine", "chakkar"],
+      "causes": "Insufficient water intake, diarrhea, vomiting, excessive heat.",
+      "firstAid": "ORS piyo foran. Agar ORS na ho: 1L saaf paani + 6 chamach cheeni + 1 chamach namak. Chhota chhota piyo. Thandi jagah mein baith jao. Agar hosh khaona, ORS hospital mein IV drip lagwao.",
+      "firstAidEn": "Drink ORS immediately. If no ORS: 1L clean water + 6 tsp sugar + 1 tsp salt. Sip slowly. Rest in cool place. If unconscious, hospital needed for IV fluids.",
+      "urgency": "high", "emoji": "💧",
+      "doList": ["ORS piyo", "Thandi jagah mein jao", "Chhota chhota piyo", "Rest karo"],
+      "dontList": ["Chai mat piyo", "Juice mat piyo", "Dhoop mein mat jao"]
+    },
+    {
+      "id": "eye_problem", "name": "Aankhon ki Takleef / آنکھوں کی تکلیف (Eye Problem)", "nameEn": "Eye Problem",
+      "symptoms": ["aankh", "eye", "آنکھ", "aansu", "lali", "red eye", "dard", "dhundla"],
+      "causes": "Infection (conjunctivitis), allergy, injury, foreign body, cataracts.",
+      "firstAid": "Saaf paani se aankh dho. Mat ragdo. Roshan roshni se door raho. Agar koi cheez ghar gayi ho: ankh mat ragdo, saaf paani se dho. Doctor ke paas jao agar dard ho ya nazar mein farq aaye.",
+      "firstAidEn": "Wash eye with clean water. Do not rub. Avoid bright light. If foreign body: do NOT rub, flush with clean water. See doctor if pain or vision changes occur.",
+      "urgency": "medium", "emoji": "👁️",
+      "doList": ["Saaf paani se dho", "Dhakein", "Doctor ke paas jao", "Rest karo"],
+      "dontList": ["Ragdo mat", "Zyada roshni mat dekho", "Surma mat lagao abhi"]
+    }
+  ],
+  "emergencyNumbers": {
+    "pakistan": { "ambulance": "1122", "edhi": "115", "rescue": "1122", "police": "15" },
+    "india": { "ambulance": "102", "police": "100", "disaster": "108" }
+  },
+  "ors_recipe": {
+    "urdu": "1 litre saaf paani + 6 chamach cheeni + 1 chamach namak — milao aur piyo",
+    "en": "1 litre clean water + 6 teaspoons sugar + 1 teaspoon salt — mix and drink"
+  }
+}

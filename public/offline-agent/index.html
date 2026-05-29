@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#10b981">
+<link rel="manifest" href="/offline-agent/manifest.json">
+<title>VisionDX — Offline Health Agent</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#0a0f1e;color:#fff;min-height:100vh;direction:ltr}
+.header{background:linear-gradient(135deg,#064e3b,#065f46);padding:16px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.header h1{font-size:1.2rem;font-weight:700;color:#fff}.header .logo{font-size:2rem}
+.offline-badge{margin-left:auto;background:#10b981;color:#fff;padding:4px 10px;border-radius:20px;font-size:.7rem;font-weight:700}
+.status-bar{background:#064e3b;padding:8px 20px;text-align:center;font-size:.8rem;color:#6ee7b7}
+.container{max-width:500px;margin:0 auto;padding:16px}
+.search-section{background:rgba(255,255,255,.05);border:1px solid rgba(16,185,129,.3);border-radius:16px;padding:16px;margin-bottom:20px}
+.search-section h2{font-size:1rem;color:#10b981;margin-bottom:12px;text-align:center}
+.search-box{display:flex;gap:8px;margin-bottom:12px}
+.search-box input{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:12px 16px;color:#fff;font-size:.95rem;outline:none}
+.search-box input:focus{border-color:#10b981}
+.search-box input::placeholder{color:rgba(255,255,255,.4)}
+.btn{border:none;cursor:pointer;border-radius:12px;padding:12px 16px;font-weight:700;transition:all .2s}
+.btn-green{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
+.btn-mic{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#ef4444;font-size:1.2rem;padding:12px 14px}
+.btn-mic.active{background:#ef4444;color:#fff;animation:pulse 1s infinite}
+.lang-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.lang-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.7);border-radius:20px;padding:5px 12px;font-size:.75rem;cursor:pointer;transition:all .2s}
+.lang-btn.active{background:#10b981;border-color:#10b981;color:#fff}
+.quick-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+.quick-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px;text-align:center;cursor:pointer;transition:all .2s}
+.quick-btn:hover{background:rgba(16,185,129,.15);border-color:#10b981}
+.quick-btn .emoji{font-size:1.8rem;display:block;margin-bottom:4px}
+.quick-btn span{font-size:.78rem;color:rgba(255,255,255,.7)}
+.result-card{background:rgba(255,255,255,.04);border-radius:16px;padding:20px;margin-bottom:12px;border-left:4px solid #10b981}
+.result-card.emergency{border-left-color:#ef4444;background:rgba(239,68,68,.06)}
+.result-card.warning{border-left-color:#f59e0b;background:rgba(245,158,11,.06)}
+.result-name{font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:8px}
+.result-name .emoji{margin-right:6px}
+.urgency-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700;margin-bottom:10px}
+.urgency-emergency{background:#ef4444;color:#fff}
+.urgency-high{background:#f59e0b;color:#000}
+.urgency-medium{background:#3b82f6;color:#fff}
+.urgency-low{background:#10b981;color:#fff}
+.section-label{font-size:.75rem;color:#10b981;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:10px 0 5px}
+.advice-text{font-size:.9rem;color:rgba(255,255,255,.85);line-height:1.7}
+.do-dont{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.do-list,.dont-list{background:rgba(255,255,255,.04);border-radius:10px;padding:10px}
+.do-list{border-top:2px solid #10b981}.dont-list{border-top:2px solid #ef4444}
+.do-list h4{color:#10b981;font-size:.75rem;margin-bottom:6px}
+.dont-list h4{color:#ef4444;font-size:.75rem;margin-bottom:6px}
+.do-list li,.dont-list li{font-size:.75rem;color:rgba(255,255,255,.7);margin-left:12px;margin-bottom:3px}
+.speak-btn{margin-top:12px;width:100%;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#10b981;border-radius:10px;padding:10px;cursor:pointer;font-weight:700;font-size:.85rem}
+.speak-btn.speaking{background:#10b981;color:#fff;animation:pulse 1s infinite}
+.emergency-section{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:16px;padding:16px;margin-bottom:20px;text-align:center}
+.emergency-section h3{color:#ef4444;font-size:1rem;margin-bottom:10px}
+.emergency-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.emergency-card{background:rgba(239,68,68,.1);border-radius:10px;padding:10px;cursor:pointer;transition:all .2s;text-decoration:none;color:#fff}
+.emergency-card:hover{background:rgba(239,68,68,.25)}
+.emergency-card .num{font-size:1.5rem;font-weight:700;color:#ef4444}
+.emergency-card .lbl{font-size:.7rem;color:rgba(255,255,255,.6)}
+.ors-card{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:14px;padding:14px;margin-bottom:20px;text-align:center}
+.ors-card h3{color:#10b981;margin-bottom:8px;font-size:.95rem}
+.ors-recipe{font-size:.9rem;color:rgba(255,255,255,.85);line-height:1.6}
+.hidden{display:none}
+.results-container{margin-top:8px}
+.no-result{text-align:center;padding:30px;color:rgba(255,255,255,.4)}
+.no-result .icon{font-size:3rem;margin-bottom:10px}
+.install-banner{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.install-banner p{font-size:.8rem;color:rgba(255,255,255,.8);flex:1}
+.install-btn{background:#10b981;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:.8rem;font-weight:700;white-space:nowrap}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.wave{display:inline-flex;gap:3px;align-items:center;height:20px}
+.wave span{width:3px;background:#10b981;border-radius:2px;animation:wave 1s ease infinite}
+.wave span:nth-child(2){animation-delay:.1s}.wave span:nth-child(3){animation-delay:.2s}
+.wave span:nth-child(4){animation-delay:.3s}.wave span:nth-child(5){animation-delay:.4s}
+@keyframes wave{0%,100%{height:4px}50%{height:18px}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="logo">🏥</span>
+  <div>
+    <h1>VisionDX Health Agent</h1>
+    <small style="color:#6ee7b7;font-size:.7rem">Offline Rural Medical Assistant</small>
+  </div>
+  <span class="offline-badge" id="networkBadge">● OFFLINE</span>
+</div>
+
+<div class="status-bar" id="statusBar">
+  ✅ Works without internet • 12 diseases loaded • Voice support active
+</div>
+
+<div class="container">
+
+  <!-- Install Banner -->
+  <div class="install-banner hidden" id="installBanner">
+    <span>📲</span>
+    <p>Install this app on your phone for permanent offline access</p>
+    <button class="install-btn" id="installBtn">Install</button>
+  </div>
+
+  <!-- Language Selector -->
+  <div style="margin-bottom:16px">
+    <div class="lang-btns">
+      <button class="lang-btn active" data-lang="ur" onclick="setLang(this,'ur')">اردو</button>
+      <button class="lang-btn" data-lang="en" onclick="setLang(this,'en')">English</button>
+      <button class="lang-btn" data-lang="pa" onclick="setLang(this,'pa')">پنجابی</button>
+      <button class="lang-btn" data-lang="ps" onclick="setLang(this,'ps')">پښتو</button>
+      <button class="lang-btn" data-lang="hi" onclick="setLang(this,'hi')">हिंदी</button>
+    </div>
+  </div>
+
+  <!-- Search Box -->
+  <div class="search-section">
+    <h2>🔍 Apni Takleef Batayein / Describe Your Problem</h2>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="e.g. bukhar, dast, khansna, sar dard..." 
+             onkeyup="if(event.key==='Enter')searchSymptom()">
+      <button class="btn btn-green" onclick="searchSymptom()">Search</button>
+      <button class="btn btn-mic" id="micBtn" onclick="toggleVoice()" title="Voice Input">🎤</button>
+    </div>
+    <div id="voiceStatus" class="hidden" style="text-align:center;color:#10b981;font-size:.85rem;margin-bottom:8px">
+      <div class="wave"><span></span><span></span><span></span><span></span><span></span></div>
+      <span id="voiceText">Listening... speak now</span>
+    </div>
+  </div>
+
+  <!-- Quick Symptom Buttons -->
+  <div class="quick-btns" id="quickBtns">
+    <div class="quick-btn" onclick="quickSearch('fever')"><span class="emoji">🌡️</span><span>Bukhar / Fever</span></div>
+    <div class="quick-btn" onclick="quickSearch('diarrhea')"><span class="emoji">🚨</span><span>Dast / Diarrhea</span></div>
+    <div class="quick-btn" onclick="quickSearch('cough')"><span class="emoji">😷</span><span>Khansi / Cough</span></div>
+    <div class="quick-btn" onclick="quickSearch('stomach_pain')"><span class="emoji">🤢</span><span>Pait Dard / Stomach</span></div>
+    <div class="quick-btn" onclick="quickSearch('headache')"><span class="emoji">🤕</span><span>Sar Dard / Headache</span></div>
+    <div class="quick-btn" onclick="quickSearch('cut_wound')"><span class="emoji">🩹</span><span>Zakhm / Wound</span></div>
+    <div class="quick-btn" onclick="quickSearch('burn')"><span class="emoji">🔥</span><span>Jalna / Burns</span></div>
+    <div class="quick-btn" onclick="quickSearch('chest_pain')"><span class="emoji">❤️</span><span>Seena Dard / Chest</span></div>
+    <div class="quick-btn" onclick="quickSearch('snake_bite')"><span class="emoji">🐍</span><span>Saanp / Snake Bite</span></div>
+    <div class="quick-btn" onclick="quickSearch('malaria')"><span class="emoji">🦟</span><span>Malaria</span></div>
+    <div class="quick-btn" onclick="quickSearch('dehydration')"><span class="emoji">💧</span><span>Pani ki Kami</span></div>
+    <div class="quick-btn" onclick="quickSearch('eye_problem')"><span class="emoji">👁️</span><span>Aankh / Eye</span></div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-container hidden" id="resultsContainer">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="font-size:.9rem;color:#10b981">Results / Nataaij</h3>
+      <button onclick="clearResults()" style="background:none;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:.75rem">Back</button>
+    </div>
+    <div id="resultsList"></div>
+  </div>
+
+  <!-- ORS Recipe (always visible) -->
+  <div class="ors-card">
+    <h3>💊 ORS Recipe — Dehydration / Dast ka Nuskha</h3>
+    <div class="ors-recipe">
+      <strong>🇵🇰 Urdu:</strong> 1 litre saaf paani + 6 chamach cheeni + 1 chamach namak<br>
+      <strong>🇬🇧 English:</strong> 1 litre clean water + 6 tsp sugar + 1 tsp salt<br>
+      <small style="color:#6ee7b7">Har dast ke baad 1 glass piyo • Drink 1 glass after each loose stool</small>
+    </div>
+  </div>
+
+  <!-- Emergency Numbers -->
+  <div class="emergency-section">
+    <h3>🚨 Emergency Numbers — Pakistan</h3>
+    <div class="emergency-grid">
+      <a href="tel:1122" class="emergency-card">
+        <div class="num">1122</div>
+        <div class="lbl">Ambulance / Rescue</div>
+      </a>
+      <a href="tel:115" class="emergency-card">
+        <div class="num">115</div>
+        <div class="lbl">Edhi Foundation</div>
+      </a>
+      <a href="tel:1166" class="emergency-card">
+        <div class="num">1166</div>
+        <div class="lbl">Health Helpline</div>
+      </a>
+      <a href="tel:15" class="emergency-card">
+        <div class="num">15</div>
+        <div class="lbl">Police</div>
+      </a>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ── State ──────────────────────────────────────────────
+let healthData = null;
+let currentLang = 'ur';
+let recognition = null;
+let isSpeaking = false;
+let deferredPrompt = null;
+
+// ── Boot ──────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadData();
+  registerSW();
+  setupVoice();
+  setupInstall();
+  updateNetworkStatus();
+  window.addEventListener('online', updateNetworkStatus);
+  window.addEventListener('offline', updateNetworkStatus);
+});
+
+async function loadData() {
+  try {
+    const r = await fetch('/offline-agent/health-data.json');
+    healthData = await r.json();
+  } catch {
+    // Try inline fallback (for cases where fetch fails offline)
+    healthData = window._fallbackData || null;
+  }
+}
+
+function registerSW() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/offline-agent/sw.js').catch(() => {});
+  }
+}
+
+function updateNetworkStatus() {
+  const badge = document.getElementById('networkBadge');
+  const bar = document.getElementById('statusBar');
+  if (navigator.onLine) {
+    badge.textContent = '● ONLINE';
+    badge.style.background = '#3b82f6';
+    bar.textContent = '🌐 Online mode • AI features available • All offline data ready';
+  } else {
+    badge.textContent = '● OFFLINE';
+    badge.style.background = '#10b981';
+    bar.textContent = '✅ Offline mode • All health data available without internet';
+  }
+}
+
+// ── Language ──────────────────────────────────────────
+function setLang(el, lang) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (recognition) {
+    const map = { ur:'ur-PK', en:'en-US', pa:'pa-IN', ps:'ps-AF', hi:'hi-IN' };
+    recognition.lang = map[lang] || 'ur-PK';
+  }
+}
+
+// ── Search ────────────────────────────────────────────
+function searchSymptom() {
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!query || !healthData) return;
+  const results = healthData.diseases.filter(d =>
+    d.symptoms.some(s => query.includes(s) || s.includes(query)) ||
+    d.nameEn.toLowerCase().includes(query) ||
+    d.id.includes(query)
+  );
+  showResults(results.length ? results : null, query);
+}
+
+function quickSearch(id) {
+  if (!healthData) return;
+  const d = healthData.diseases.find(x => x.id === id);
+  showResults(d ? [d] : null, id);
+}
+
+function showResults(results, query) {
+  const container = document.getElementById('resultsContainer');
+  const list = document.getElementById('resultsList');
+  document.getElementById('quickBtns').style.display = 'none';
+  container.classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  if (!results) {
+    list.innerHTML = `
+      <div class="no-result">
+        <div class="icon">🔍</div>
+        <p>No results for "<strong>${query}</strong>"</p>
+        <p style="margin-top:8px;font-size:.8rem">Try: bukhar, dast, khansi, sar dard, seena, zakhm</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = results.map(d => renderCard(d)).join('');
+}
+
+function renderCard(d) {
+  const advice = currentLang === 'en' ? d.firstAidEn : d.firstAid;
+  const urgClass = { emergency:'urgency-emergency', high:'urgency-high', medium:'urgency-medium', low:'urgency-low' }[d.urgency];
+  const cardClass = d.urgency === 'emergency' ? 'result-card emergency' : d.urgency === 'high' ? 'result-card warning' : 'result-card';
+  const doItems = d.doList.map(i => `<li>${i}</li>`).join('');
+  const dontItems = d.dontList.map(i => `<li>${i}</li>`).join('');
+
+  return `
+    <div class="${cardClass}">
+      <div class="result-name"><span class="emoji">${d.emoji}</span>${d.name}</div>
+      <span class="urgency-badge ${urgClass}">${d.urgency.toUpperCase()}</span>
+      <div class="section-label">Wajah / Causes</div>
+      <p class="advice-text" style="font-size:.82rem">${d.causes}</p>
+      <div class="section-label">Kya Karein / First Aid</div>
+      <p class="advice-text">${advice}</p>
+      <div class="do-dont">
+        <div class="do-list"><h4>✅ Karein</h4><ul>${doItems}</ul></div>
+        <div class="dont-list"><h4>❌ Mat Karein</h4><ul>${dontItems}</ul></div>
+      </div>
+      <button class="speak-btn" id="speak-${d.id}" onclick="speakAdvice(this, '${d.id}', \`${advice.replace(/`/g,"'")}\`)">
+        🔊 Sunaiye / Listen to Advice
+      </button>
+    </div>`;
+}
+
+function clearResults() {
+  document.getElementById('resultsContainer').classList.add('hidden');
+  document.getElementById('quickBtns').style.display = 'grid';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('resultsList').innerHTML = '';
+  window.speechSynthesis.cancel();
+}
+
+// ── Voice Input ───────────────────────────────────────
+function setupVoice() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) return;
+  recognition = new SpeechRec();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'ur-PK';
+
+  recognition.onresult = e => {
+    const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+    document.getElementById('searchInput').value = transcript;
+    document.getElementById('voiceText').textContent = transcript;
+    if (e.results[e.results.length - 1].isFinal) {
+      stopVoice();
+      searchSymptom();
+    }
+  };
+  recognition.onend = stopVoice;
+  recognition.onerror = stopVoice;
+}
+
+function toggleVoice() {
+  const btn = document.getElementById('micBtn');
+  const status = document.getElementById('voiceStatus');
+  if (!recognition) { alert('Voice not supported in this browser'); return; }
+  if (btn.classList.contains('active')) {
+    recognition.stop();
+  } else {
+    recognition.start();
+    btn.classList.add('active');
+    status.classList.remove('hidden');
+    document.getElementById('voiceText').textContent = 'Listening... bolo abhi';
+  }
+}
+
+function stopVoice() {
+  document.getElementById('micBtn').classList.remove('active');
+  document.getElementById('voiceStatus').classList.add('hidden');
+}
+
+// ── Speech Output ─────────────────────────────────────
+function speakAdvice(btn, id, text) {
+  window.speechSynthesis.cancel();
+  if (btn.classList.contains('speaking')) {
+    btn.classList.remove('speaking');
+    btn.textContent = '🔊 Sunaiye / Listen to Advice';
+    return;
+  }
+  document.querySelectorAll('.speak-btn').forEach(b => {
+    b.classList.remove('speaking');
+    b.textContent = '🔊 Sunaiye / Listen to Advice';
+  });
+  const utter = new SpeechSynthesisUtterance(text);
+  const langMap = { ur:'ur-PK', en:'en-US', pa:'pa-IN', ps:'ps-AF', hi:'hi-IN' };
+  utter.lang = langMap[currentLang] || 'ur-PK';
+  utter.rate = 0.85;
+  utter.onstart = () => { btn.classList.add('speaking'); btn.textContent = '⏸️ Stop'; };
+  utter.onend = () => { btn.classList.remove('speaking'); btn.textContent = '🔊 Sunaiye / Listen to Advice'; };
+  window.speechSynthesis.speak(utter);
+}
+
+// ── PWA Install ───────────────────────────────────────
+function setupInstall() {
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installBanner').classList.remove('hidden');
+  });
+  document.getElementById('installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') document.getElementById('installBanner').classList.add('hidden');
+    deferredPrompt = null;
+  });
+}
+</script>
+</body>
+</html>

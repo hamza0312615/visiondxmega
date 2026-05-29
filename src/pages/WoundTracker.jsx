@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { analyzeImage } from '../utils/groqApi'
-import { saveResult, getHistoryByType, formatTime } from '../utils/localStorage'
+import { saveResult, getHistoryByType, formatTime, isDemoMode, setDemoMode, getApiKey } from '../utils/localStorage'
+import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import WebcamCapture from '../components/WebcamCapture'
+import Skeleton from '../components/Skeleton'
 
 export default function WoundTracker() {
   const [imageFile, setImageFile] = useState(null)
@@ -12,6 +14,7 @@ export default function WoundTracker() {
   const [dayNumber, setDayNumber] = useState('Day 1')
   const [location, setLocation] = useState('')
   const [painLevel, setPainLevel] = useState(3)
+  const [presetData, setPresetData] = useState(null)
   
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -20,6 +23,27 @@ export default function WoundTracker() {
 
   useEffect(() => {
     loadTimeline()
+    
+    // Demo auto-run hook
+    const runDemo = async () => {
+      if (isDemoMode()) {
+        setDemoMode(false) // Disable global demo mode immediately to prevent recurrent loops
+        const preset = demoPresets.wound[0]
+        const blob = await fetch(preset.image).then(res => res.blob())
+        const file = new File([blob], preset.fileName, { type: "image/png" })
+        setImageFile(file)
+        setImagePreview(preset.image)
+        setLocation(preset.location)
+        setDayNumber(preset.dayNumber || "Day 5")
+        setPainLevel(2)
+        setPresetData(preset)
+        
+        setTimeout(() => {
+          handleAnalyze(null, file, preset)
+        }, 1200)
+      }
+    }
+    runDemo()
   }, [])
 
   const loadTimeline = () => {
@@ -50,9 +74,10 @@ export default function WoundTracker() {
     setError('')
   }
 
-  const handleAnalyze = async (e) => {
+  const handleAnalyze = async (e, customFile, forcePreset) => {
     if (e) e.preventDefault()
-    if (!imageFile) {
+    const activeFile = customFile || imageFile
+    if (!activeFile) {
       setError('Please capture or upload a wound image to analyze.')
       return
     }
@@ -65,13 +90,26 @@ export default function WoundTracker() {
     setError('')
     setCurrentResult(null)
 
+    // Preset simulated fallback mode if API keys are missing
+    const activePreset = forcePreset || presetData
+    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
+    if (activePreset && activeFile.name === activePreset.fileName && !hasKey) {
+      setTimeout(() => {
+        const saved = saveResult('wound', activePreset.fallbackResult)
+        setCurrentResult(saved)
+        setLoading(false)
+        loadTimeline()
+      }, 1500)
+      return
+    }
+
     const prompt = `You are an expert medical wound assessment AI. Analyze this wound image. The patient reports this is ${dayNumber} of healing. Pain level: ${painLevel}/10. Location: ${location}. 
 1) Assess healing progress: Is it healing normally, slowly, or showing signs of infection (e.g., yellow slough, purulent drainage, excessive erythema)?
 2) Describe redness, swelling, and wound bed characteristics.
 3) Provide a clear care recommendation. End your response with exactly one of these urgency flags: HOME_CARE, SEE_DOCTOR, or EMERGENCY.`
 
     try {
-      const aiResponse = await analyzeImage(imageFile, prompt)
+      const aiResponse = await analyzeImage(activeFile, prompt)
       
       let healingStatus = 'Analyzing...'
       if (aiResponse.toLowerCase().includes('healing normally') || aiResponse.toLowerCase().includes('healing well')) healingStatus = 'Healing Well'
@@ -109,6 +147,7 @@ export default function WoundTracker() {
     setImagePreview('')
     setLocation('')
     setPainLevel(3)
+    setPresetData(null)
     setCurrentResult(null)
     setError('')
   }
@@ -142,7 +181,12 @@ export default function WoundTracker() {
       )}
 
       {loading ? (
-        <LoadingSpinner message="Analyzing wound bed characteristics, erythema, and exudate levels..." />
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-medical-green/10 border border-medical-green/20 text-medical-green text-xs font-semibold animate-pulse shadow-glow flex items-center gap-2">
+            <span>🔬</span> Analyzing wound bed characteristics, erythema, and exudate levels...
+          </div>
+          <Skeleton />
+        </div>
       ) : currentResult ? (
         <div className="space-y-8 fade-in">
           <ResultCard data={currentResult} />
@@ -255,6 +299,37 @@ export default function WoundTracker() {
                 <WebcamCapture onCapture={handleWebcamCapture} label="Open Live Wound Camera" />
               ) : (
                 <div>
+                  {/* Interactive Demo Presets */}
+                  {!imagePreview && (
+                    <div className="bg-[#020810]/40 p-5 rounded-2xl border border-white/5 space-y-3 mb-4">
+                      <div className="text-xs font-bold text-medical-green flex items-center gap-1.5">
+                        <span>✨</span> Clinical Demo Presets (No Photo Required):
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {demoPresets.wound.map((preset) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={async () => {
+                              const blob = await fetch(preset.image).then(res => res.blob())
+                              const file = new File([blob], preset.fileName, { type: 'image/png' })
+                              setImageFile(file)
+                              setImagePreview(preset.image)
+                              setLocation(preset.location)
+                              setDayNumber(preset.dayNumber || "Day 5")
+                              setPainLevel(preset.id === 'wound-2' ? 8 : preset.id === 'wound-3' ? 1 : 2)
+                              setPresetData(preset)
+                            }}
+                            className="p-3.5 text-left rounded-xl bg-white/5 hover:bg-medical-green/10 border border-white/10 hover:border-medical-green/30 transition-all flex flex-col justify-between gap-1.5 group cursor-pointer"
+                          >
+                            <div className="text-xs font-bold text-white group-hover:text-medical-green transition-colors line-clamp-1">{preset.title}</div>
+                            <div className="text-[10px] text-white/50 line-clamp-2 leading-relaxed">{preset.description}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {!imagePreview ? (
                     <div
                       onDragOver={(e) => e.preventDefault()}

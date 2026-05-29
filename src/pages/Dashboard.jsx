@@ -1,16 +1,22 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { getHistory, getWhatsAppConfig, formatTime } from '../utils/localStorage'
+import { Link, useNavigate } from 'react-router-dom'
+import { getHistory, getWhatsAppConfig, formatTime, setDemoMode } from '../utils/localStorage'
 import FeatureCard from '../components/FeatureCard'
+import RiskScore from '../components/RiskScore'
 
 export default function Dashboard() {
   const [recentScans, setRecentScans] = useState([])
   const [whatsapp, setWhatsapp] = useState({ phone: '14155238886', joinCode: 'join flag-none' })
+  const navigate = useNavigate()
 
   useEffect(() => {
     setRecentScans(getHistory().slice(0, 4))
     setWhatsapp(getWhatsAppConfig())
   }, [])
+
+  const handleActivateDemo = () => {
+    window.dispatchEvent(new Event('autopilot-start'))
+  }
 
   const features = [
     {
@@ -70,12 +76,36 @@ export default function Dashboard() {
       stats: ["PDF/Image", "Biomarkers"]
     },
     {
+      title: "Hair Disease AI",
+      description: "Analyze white hair, premature graying, hair thinning, and scalp conditions with trichology-trained vision AI.",
+      icon: "💇",
+      path: "/hair-analyzer",
+      color: "emerald",
+      stats: ["Trichology AI", "Color Shifts"]
+    },
+    {
+      title: "Daily Routine Analyzer",
+      description: "Input daily sleep, screen time, water, activity, and stress metrics to calculate and optimize your lifestyle schedule.",
+      icon: "📅",
+      path: "/routine-analyzer",
+      color: "purple",
+      stats: ["Habits Score", "Hourly Schedule"]
+    },
+    {
       title: "VoiceDoc Triage AI",
       description: "Rural-focused voice assistant with Llama 3.3 Versatile reasoning, native language speech synthesis, and WhatsApp bot.",
       icon: "🩺",
       path: "/voicedoc",
       color: "orange",
       stats: ["Speech Synthesis", "WhatsApp Bot"]
+    },
+    {
+      title: "Suggest Medicine AI",
+      description: "Get structured therapeutic guidelines, over-the-counter active formulations, strict contraindications, and dosages.",
+      icon: "💊",
+      path: "/suggest-medicine",
+      color: "teal",
+      stats: ["Circadian Rx Pad", "Dosages & Warnings"]
     }
   ]
 
@@ -88,22 +118,25 @@ export default function Dashboard() {
       case 'eye': return '👁️';
       case 'skin': return '🔴';
       case 'lab': return '📄';
+      case 'hair': return '💇';
+      case 'routine': return '📅';
       case 'voicedoc': return '🩺';
+      case 'prescription': return '💊';
       default: return '📋';
     }
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12 slide-in">
-      {/* Hero Section */}
-      <div className="relative glass-card p-8 sm:p-12 rounded-3xl overflow-hidden border border-white/10 text-center space-y-6 shadow-2xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-medical-green/10 to-medical-blue/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-medical-blue/10 to-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Pakistan ka Digital Doctor Hero Section */}
+      <div className="relative glass-card p-8 sm:p-12 rounded-3xl overflow-hidden border border-white/10 text-center space-y-6 shadow-2xl bg-gradient-to-b from-navy-900 to-[#020810]/95">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-medical-green/15 to-medical-blue/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-medical-blue/15 to-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-medical-green/10 border border-medical-green/20 text-medical-green text-xs font-bold uppercase tracking-wider shadow-glow">
+        <div className="relative z-10 space-y-5 max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-medical-green/10 border border-medical-green/20 text-medical-green text-xs font-black uppercase tracking-widest shadow-glow">
             <span className="w-2 h-2 rounded-full bg-medical-green animate-pulse" />
-            Enterprise Medical AI Suite
+            PAKISTAN KA DIGITAL DOCTOR • پاکستان کا ڈیجیٹل ڈاکٹر
           </div>
           
           <h1 className="text-4xl sm:text-6xl font-extrabold text-white font-outfit tracking-tight leading-tight">
@@ -111,74 +144,90 @@ export default function Dashboard() {
           </h1>
           
           <p className="text-base sm:text-lg text-white/70 leading-relaxed max-w-2xl mx-auto">
-            Experience the future of healthcare. 8 powerful AI diagnostic tools unified into a single client-side platform powered by Groq Llama-3.2-Vision and Whisper AI.
+            Experience clinical AI diagnostics. 11 powerful tools unified into a single client-side platform.
+            <span className="block mt-2 font-semibold text-medical-green">
+              Over {getHistory().length} diagnostic scans completed 100% privately.
+            </span>
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
             <a href="#diagnostics" className="btn-primary py-3.5 px-8 text-base shadow-lg shadow-medical-green/20">
               <span>🚀</span> Launch Diagnostics
             </a>
+            <button
+              onClick={handleActivateDemo}
+              className="px-8 py-3.5 rounded-2xl bg-teal-500 hover:bg-teal-600 text-navy-950 font-extrabold text-base transition-all flex items-center gap-1.5 shadow-lg shadow-teal-500/20"
+            >
+              <span>🔬</span> Try Active Demo Mode
+            </button>
             <Link to="/history" className="btn-secondary py-3.5 px-8 text-base">
               <span>📋</span> View Patient History
             </Link>
           </div>
         </div>
 
-        {/* Quick Stats Banner */}
-        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-4 pt-8 border-t border-white/10 mt-8 max-w-4xl mx-auto">
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-md">
-            <div className="text-2xl sm:text-3xl font-extrabold text-white font-outfit">8</div>
-            <div className="text-xs text-white/50 uppercase font-semibold tracking-wider mt-1">Diagnostic Modules</div>
+        {/* 3 Stat Pills & Stats Banner */}
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8 border-t border-white/10 mt-8 max-w-3xl mx-auto">
+          <div className="p-4 rounded-2xl bg-medical-green/5 border border-medical-green/10 backdrop-blur-md flex flex-col items-center">
+            <span className="text-xl">🧬</span>
+            <div className="text-base font-extrabold text-white font-outfit mt-1">11 AI Modules</div>
+            <div className="text-[10px] text-white/40 uppercase font-semibold tracking-wider">Acoustic & Vision AI</div>
           </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-md">
-            <div className="text-2xl sm:text-3xl font-extrabold text-medical-green font-outfit">&lt; 1s</div>
-            <div className="text-xs text-white/50 uppercase font-semibold tracking-wider mt-1">Groq AI Inference</div>
+          <div className="p-4 rounded-2xl bg-medical-blue/5 border border-medical-blue/10 backdrop-blur-md flex flex-col items-center">
+            <span className="text-xl">🔒</span>
+            <div className="text-base font-extrabold text-medical-green font-outfit mt-1">100% Private</div>
+            <div className="text-[10px] text-white/40 uppercase font-semibold tracking-wider">Zero Backend Storage</div>
           </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-md">
-            <div className="text-2xl sm:text-3xl font-extrabold text-medical-blue font-outfit">100%</div>
-            <div className="text-xs text-white/50 uppercase font-semibold tracking-wider mt-1">Client-Side Privacy</div>
-          </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-md">
-            <div className="text-2xl sm:text-3xl font-extrabold text-purple-400 font-outfit">24/7</div>
-            <div className="text-xs text-white/50 uppercase font-semibold tracking-wider mt-1">WhatsApp Triage</div>
+          <div className="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/10 backdrop-blur-md flex flex-col items-center">
+            <span className="text-xl">📴</span>
+            <div className="text-base font-extrabold text-purple-400 font-outfit mt-1">Works Offline</div>
+            <div className="text-[10px] text-white/40 uppercase font-semibold tracking-wider">Service Worker Pre-Loaded</div>
           </div>
         </div>
       </div>
 
-      {/* WhatsApp Triage Banner */}
-      <div className="glass-card p-6 sm:p-8 rounded-3xl border border-medical-green/30 bg-gradient-to-r from-medical-green/10 via-[#020810] to-medical-blue/10 flex flex-wrap items-center justify-between gap-6 shadow-xl">
-        <div className="space-y-2 max-w-xl">
-          <div className="flex items-center gap-2 text-medical-green font-bold text-sm uppercase tracking-wider">
-            <span className="w-2 h-2 rounded-full bg-medical-green animate-pulse" /> VoiceDoc WhatsApp Sandbox
-          </div>
-          <h3 className="text-xl sm:text-2xl font-bold text-white font-outfit">
-            Instant Rural Triage via WhatsApp
-          </h3>
-          <p className="text-sm text-white/70 leading-relaxed">
-            Connect to our automated WhatsApp bot for immediate medical guidance and triage. Send the code below to our sandbox number to get started instantly.
-          </p>
+      {/* Grid for Gauge & WhatsApp Triage */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+        <div className="lg:col-span-1 flex">
+          <RiskScore />
         </div>
-        <div className="flex flex-wrap items-center gap-4 bg-[#020810]/80 p-4 rounded-2xl border border-white/10 backdrop-blur-xl shadow-inner">
-          <div>
-            <div className="text-[10px] text-white/40 uppercase font-semibold tracking-wider mb-1">1. Send this message:</div>
-            <div className="font-mono text-sm sm:text-base font-bold text-medical-green bg-medical-green/10 px-4 py-2 rounded-xl border border-medical-green/20 select-all">
-              {whatsapp.joinCode}
+        <div className="lg:col-span-2 flex">
+          {/* WhatsApp Triage Banner */}
+          <div className="glass-card p-6 sm:p-8 rounded-3xl border border-medical-green/30 bg-gradient-to-r from-medical-green/10 via-[#020810] to-medical-blue/10 flex flex-col justify-between gap-6 shadow-xl w-full">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-medical-green font-bold text-sm uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-medical-green animate-pulse" /> VoiceDoc WhatsApp Sandbox
+              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-white font-outfit">
+                Instant Rural Triage via WhatsApp
+              </h3>
+              <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
+                Connect to our automated WhatsApp bot for immediate medical guidance and triage. Send the code below to our sandbox number to get started instantly.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 bg-[#020810]/80 p-4 rounded-2xl border border-white/10 backdrop-blur-xl shadow-inner justify-between w-full">
+              <div>
+                <div className="text-[9px] text-white/40 uppercase font-semibold tracking-wider mb-1">1. Send this message:</div>
+                <div className="font-mono text-xs sm:text-sm font-bold text-medical-green bg-medical-green/10 px-3 py-1.5 rounded-xl border border-medical-green/20 select-all">
+                  {whatsapp.joinCode}
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] text-white/40 uppercase font-semibold tracking-wider mb-1">2. To WhatsApp Number:</div>
+                <div className="font-mono text-xs sm:text-sm font-bold text-white bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 select-all">
+                  +{whatsapp.phone}
+                </div>
+              </div>
+              <a
+                href={`https://wa.me/${whatsapp.phone}?text=${encodeURIComponent(whatsapp.joinCode)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary py-2.5 px-5 text-xs font-bold shadow-lg shadow-medical-green/20"
+              >
+                <span>💬</span> WhatsApp Bot
+              </a>
             </div>
           </div>
-          <div>
-            <div className="text-[10px] text-white/40 uppercase font-semibold tracking-wider mb-1">2. To WhatsApp Number:</div>
-            <div className="font-mono text-sm sm:text-base font-bold text-white bg-white/5 px-4 py-2 rounded-xl border border-white/10 select-all">
-              +{whatsapp.phone}
-            </div>
-          </div>
-          <a
-            href={`https://wa.me/${whatsapp.phone}?text=${encodeURIComponent(whatsapp.joinCode)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary py-3 px-6 text-sm font-bold shadow-lg shadow-medical-green/20 self-end"
-          >
-            <span>💬</span> Open WhatsApp
-          </a>
         </div>
       </div>
 

@@ -1,18 +1,65 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { analyzeImage, analyzeText } from '../utils/groqApi'
-import { saveResult } from '../utils/localStorage'
+import { saveResult, isDemoMode, setDemoMode, getApiKey } from '../utils/localStorage'
+import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import WebcamCapture from '../components/WebcamCapture'
+import Skeleton from '../components/Skeleton'
 
 export default function MedicineAnalyzer() {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('upload') // 'upload', 'webcam', or 'manual'
+  const [presetData, setPresetData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [currentResult, setCurrentResult] = useState(null)
+
+  useEffect(() => {
+    const runDemo = async () => {
+      const isAutopilot = localStorage.getItem('visiondx_autopilot') === 'active' && localStorage.getItem('visiondx_autopilot_step') === 'medicine'
+      const storedTrigger = localStorage.getItem('visiondx_nav_preset_trigger')
+      
+      let preset = null
+      if (storedTrigger) {
+        const parsed = JSON.parse(storedTrigger)
+        if (parsed.page === '/medicine-analyzer') {
+          preset = demoPresets.medicine.find(p => p.id === parsed.presetId)
+          localStorage.removeItem('visiondx_nav_preset_trigger')
+        }
+      }
+      
+      if (!preset && (isDemoMode() || isAutopilot)) {
+        if (isDemoMode()) setDemoMode(false)
+        preset = demoPresets.medicine[0]
+      }
+      
+      if (preset) {
+        const blob = await fetch(preset.image).then(res => res.blob())
+        const file = new File([blob], preset.fileName, { type: preset.fileName.endsWith('.jpg') ? "image/jpeg" : "image/png" })
+        setImageFile(file)
+        setImagePreview(preset.image)
+        setActiveTab('upload')
+        setPresetData(preset)
+        
+        if (isAutopilot) {
+          setLoading(true)
+          setTimeout(() => {
+            handleAnalyze(null, preset.title, file, preset)
+          }, 1200)
+        }
+      }
+    }
+    runDemo()
+
+    const handleNavTrigger = () => {
+      runDemo()
+    }
+    window.addEventListener('visiondx-preset-triggered', handleNavTrigger)
+    return () => window.removeEventListener('visiondx-preset-triggered', handleNavTrigger)
+  }, [])
 
   const handleImageChange = (file) => {
     if (!file) return
@@ -37,14 +84,17 @@ export default function MedicineAnalyzer() {
     setError('')
   }
 
-  const handleAnalyze = async (e) => {
+  const handleAnalyze = async (e, customQuery, customFile, forcePreset) => {
     if (e) e.preventDefault()
     
-    if (activeTab !== 'manual' && !imageFile) {
+    const activeFile = customFile || imageFile
+    const activeQuery = customQuery || searchQuery
+
+    if (activeTab !== 'manual' && !activeFile) {
       setError('Please capture or upload a medicine photo to analyze.')
       return
     }
-    if (activeTab === 'manual' && !searchQuery.trim()) {
+    if (activeTab === 'manual' && !activeQuery.trim()) {
       setError('Please enter a medication name or active ingredient to search.')
       return
     }
@@ -53,7 +103,22 @@ export default function MedicineAnalyzer() {
     setError('')
     setCurrentResult(null)
 
-    let medName = searchQuery.trim()
+    // Preset simulated fallback mode if API keys are missing
+    const activePreset = forcePreset || presetData
+    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
+    if (activePreset && activeFile && activeFile.name === activePreset.fileName && !hasKey) {
+      setTimeout(() => {
+        const saved = saveResult('medicine', activePreset.fallbackResult)
+        setCurrentResult(saved)
+        setLoading(false)
+        if (localStorage.getItem('visiondx_autopilot') === 'active') {
+          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'medicine', result: saved } }))
+        }
+      }, 1500)
+      return
+    }
+
+    let medName = activeQuery.trim()
     let aiResponse = ''
     let apiSource = activeTab === 'manual' ? 'Manual Search' : 'Groq Vision OCR'
 
@@ -62,7 +127,8 @@ export default function MedicineAnalyzer() {
         const textPrompt = `You are an expert pharmacist AI assistant. Analyze the medication named "${medName}".
 1) Identify active ingredients and primary therapeutic class.
 2) Explain what condition it treats, standard adult dosage, common side effects, and critical contraindications/warnings.
-3) Provide clear patient guidance and determine medical urgency. End your response with exactly one of these urgency flags: NORMAL, SEE_DOCTOR, or EMERGENCY.`
+3) Suggested Medicines & Early Care (in absence of doctor): Provide home care tips, non-prescription precautions, or generic early-use suggested alternative medicines to consider if a doctor is not immediately reachable. Add a clear disclaimer that these suggestions are for temporary relief/education and need verification.
+4) Provide clear patient guidance and determine medical urgency. End your response with exactly one of these urgency flags: NORMAL, SEE_DOCTOR, or EMERGENCY.`
         
         aiResponse = await analyzeText(textPrompt)
       } else {
@@ -70,9 +136,10 @@ export default function MedicineAnalyzer() {
 1) Identify the medicine name, active ingredients, and primary therapeutic class.
 2) Explain what condition it treats, standard adult dosage, common side effects, and critical contraindications/warnings.
 3) Perform a counterfeit packaging screening (look for packaging irregularities, font inconsistencies, spelling errors, or missing security seals).
-4) Provide clear patient guidance and determine medical urgency. End your response with exactly one of these urgency flags: NORMAL, SEE_DOCTOR, or EMERGENCY.`
-
-        aiResponse = await analyzeImage(imageFile, visionPrompt)
+4) Suggested Medicines & Early Care (in absence of doctor): Provide home care tips, non-prescription precautions, or generic early-use suggested alternative medicines to consider if a doctor is not immediately reachable. Add a clear disclaimer that these suggestions are for temporary relief/education and need verification.
+5) Provide clear patient guidance and determine medical urgency. End your response with exactly one of these urgency flags: NORMAL, SEE_DOCTOR, or EMERGENCY.`
+ 
+        aiResponse = await analyzeImage(activeFile, visionPrompt)
 
         const nameMatch = aiResponse.match(/(?:name|identify|medicine|drug|active ingredient)[\s:=]+([^\n.,;]+)/i)
         if (nameMatch && nameMatch[1]) {
@@ -154,6 +221,9 @@ export default function MedicineAnalyzer() {
       const saved = saveResult('medicine', resultData)
       setCurrentResult(saved)
 
+      if (localStorage.getItem('visiondx_autopilot') === 'active') {
+        window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'medicine', result: saved } }))
+      }
     } catch (err) {
       setError(err.message || 'Failed to analyze medicine. Please check your API key or try again.')
     } finally {
@@ -165,6 +235,7 @@ export default function MedicineAnalyzer() {
     setImageFile(null)
     setImagePreview('')
     setSearchQuery('')
+    setPresetData(null)
     setCurrentResult(null)
     setError('')
   }
@@ -191,6 +262,17 @@ export default function MedicineAnalyzer() {
         )}
       </div>
 
+      {/* Educational Purpose Disclaimer */}
+      <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs sm:text-sm font-semibold flex items-start gap-3 shadow-lg">
+        <span className="text-xl shrink-0">⚠️</span>
+        <div className="space-y-1">
+          <p className="font-bold text-white uppercase tracking-wider">Educational & Informational Purpose Only</p>
+          <p className="text-white/70 leading-relaxed font-normal">
+            This project is designed strictly for educational and informational purposes. The suggestions, early care precautions, and medicine lists are simulated guidelines to consider only if a doctor is not immediately reachable. They do not constitute formal medical advice. Always consult a licensed medical professional before starting or stopping any medication.
+          </p>
+        </div>
+      </div>
+
       {error && (
         <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-3 fade-in shadow-lg">
           <span>⚠️</span> {error}
@@ -198,7 +280,12 @@ export default function MedicineAnalyzer() {
       )}
 
       {loading ? (
-        <LoadingSpinner message={activeTab === 'manual' ? `Querying openFDA & NIH RxNorm databases for "${searchQuery}"...` : "Analyzing medicine packaging, fonts, active ingredients, and matching pharmaceutical database..."} />
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-semibold animate-pulse shadow-glow flex items-center gap-2">
+            <span>🔬</span> {activeTab === 'manual' ? `Querying openFDA & NIH RxNorm databases for "${searchQuery}"...` : "Analyzing medicine packaging, fonts, active ingredients, and matching pharmaceutical database..."}
+          </div>
+          <Skeleton />
+        </div>
       ) : currentResult ? (
         <div className="space-y-8 fade-in">
           <ResultCard data={currentResult} />
@@ -271,6 +358,34 @@ export default function MedicineAnalyzer() {
             <WebcamCapture onCapture={handleWebcamCapture} label="Open Live Medicine Camera" />
           ) : (
             <div>
+              {/* Interactive Demo Presets */}
+              {!imagePreview && (
+                <div className="bg-[#020810]/40 p-5 rounded-2xl border border-white/5 space-y-3 mb-4">
+                  <div className="text-xs font-bold text-teal-300 flex items-center gap-1.5">
+                    <span>✨</span> Clinical Demo Presets (No Photo Required):
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {demoPresets.medicine.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={async () => {
+                          const blob = await fetch(preset.image).then(res => res.blob())
+                          const file = new File([blob], preset.fileName, { type: 'image/png' })
+                          setImageFile(file)
+                          setImagePreview(preset.image)
+                          setPresetData(preset)
+                        }}
+                        className="p-3.5 text-left rounded-xl bg-white/5 hover:bg-teal-500/10 border border-white/10 hover:border-teal-500/30 transition-all flex flex-col justify-between gap-1.5 group cursor-pointer"
+                      >
+                        <div className="text-xs font-bold text-white group-hover:text-teal-300 transition-colors line-clamp-1">{preset.title}</div>
+                        <div className="text-[10px] text-white/50 line-clamp-2 leading-relaxed">{preset.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {!imagePreview ? (
                 <div
                   onDragOver={(e) => e.preventDefault()}
@@ -316,17 +431,29 @@ export default function MedicineAnalyzer() {
             </div>
           )}
 
+          {presetData && !currentResult && (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border-2 border-dashed border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center gap-3 animate-pulse shadow-[0_0_20px_rgba(16,185,129,0.15)] mt-4">
+              <span className="text-xl">💡</span>
+              <div>
+                <div className="font-bold text-white text-sm">Demo Case Loaded!</div>
+                <div className="mt-0.5 text-white/70">Click the pulsing <b>"Run High-Fidelity Demo Analysis"</b> button below to execute the AI clinical simulation.</div>
+              </div>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={handleAnalyze}
             disabled={activeTab === 'manual' ? !searchQuery.trim() : !imageFile}
             className={`w-full py-4 rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xl ${
               (activeTab === 'manual' ? searchQuery.trim() : imageFile)
-                ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white hover:scale-[1.01] shadow-teal-500/20'
+                ? presetData && !currentResult
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-navy-950 hover:scale-[1.01] animate-bounce shadow-emerald-500/40 ring-4 ring-emerald-400/30'
+                  : 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white hover:scale-[1.01] shadow-teal-500/20'
                 : 'bg-white/5 text-white/40 cursor-not-allowed border border-white/5'
             }`}
           >
-            <span>🔬</span> {activeTab === 'manual' ? 'Verify Medication via openFDA & NIH' : 'Identify & Analyze Medicine'}
+            <span>🔬</span> {presetData && !currentResult ? 'Run High-Fidelity Demo Analysis' : activeTab === 'manual' ? 'Verify Medication via openFDA & NIH' : 'Identify & Analyze Medicine'}
           </button>
         </div>
       )}

@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react'
-import { getApiKey, setApiKey, getWhatsAppConfig, setWhatsAppConfig } from '../utils/localStorage'
+import { getApiKey, setApiKey, getWhatsAppConfig, setWhatsAppConfig, getHeatmapOptIn, setHeatmapOptIn, clearHeatmapData } from '../utils/localStorage'
 
 export default function Settings() {
   const [apiKey, setApiKeyValue] = useState('')
   const [geminiKey, setGeminiKeyValue] = useState('')
   const [doctorPhone, setDoctorPhone] = useState('')
   const [saved, setSaved] = useState(false)
+  const [heatmapOptIn, setHeatmapOptInState] = useState(false)
 
   useEffect(() => {
     setApiKeyValue(getApiKey())
     setGeminiKeyValue(localStorage.getItem('visiondx_gemini_key') || '')
     const waConfig = getWhatsAppConfig()
     setDoctorPhone(waConfig.doctorPhone || '')
+    setHeatmapOptInState(getHeatmapOptIn())
   }, [])
 
   const handleSave = (e) => {
@@ -34,6 +36,13 @@ export default function Settings() {
     setWhatsAppConfig({ doctorPhone: defaultPhone })
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
+  }
+
+  const handleClearHeatmap = () => {
+    if (window.confirm('Are you sure you want to clear all local epidemiological heatmap logs?')) {
+      clearHeatmapData()
+      alert('Heatmap logs cleared successfully!')
+    }
   }
 
   return (
@@ -151,6 +160,52 @@ export default function Settings() {
             )}
           </div>
         </form>
+      </div>
+
+      {/* Regional Epidemiological Heatmap Settings */}
+      <div className="glass-card p-8 sm:p-10 rounded-3xl border border-white/10 shadow-2xl space-y-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-medical-blue/5 rounded-full blur-3xl pointer-events-none -mr-10 -mt-10" />
+
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-white font-outfit flex items-center gap-2">
+            <span>🗺️</span> Regional Heatmap & Epidemiological Opt-In
+          </h2>
+          <p className="text-sm text-white/50 leading-relaxed">
+            Configure your sharing preferences for anonymous, privacy-first regional disease tracking.
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          <label className="flex items-center gap-3 bg-white/5 border border-white/10 p-4 rounded-2xl cursor-pointer hover:bg-white/10 transition-all shadow-md select-none">
+            <span className="text-sm font-bold text-white/80 flex-1">Enable Anonymous Heatmap Data Sharing:</span>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={heatmapOptIn}
+                onChange={(e) => {
+                  const val = e.target.checked
+                  setHeatmapOptInState(val)
+                  setHeatmapOptIn(val)
+                }}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/40 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-medical-green peer-checked:after:bg-navy-950" />
+            </div>
+            <span className={`text-xs font-bold px-3 py-1 rounded-lg ${heatmapOptIn ? 'bg-medical-green/20 text-medical-green border border-medical-green/30' : 'bg-white/10 text-white/45 border border-white/5'}`}>
+              {heatmapOptIn ? 'ACTIVE' : 'OPTED OUT'}
+            </span>
+          </label>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              type="button"
+              onClick={handleClearHeatmap}
+              className="px-5 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-xs font-bold transition-all shadow-md"
+            >
+              🗑️ Clear Heatmap Logs
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Model Specs & Architecture Info */}

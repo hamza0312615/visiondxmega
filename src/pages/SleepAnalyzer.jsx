@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { analyzeText, transcribeAudio } from '../utils/groqApi'
-import { saveResult, getHistoryByType, formatTime } from '../utils/localStorage'
+import { saveResult, getHistoryByType, formatTime, isDemoMode, setDemoMode, getDemoData } from '../utils/localStorage'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
+import Skeleton from '../components/Skeleton'
 
 export default function SleepAnalyzer() {
   const [activeTab, setActiveTab] = useState('form') // 'form' or 'audio'
@@ -27,6 +28,27 @@ export default function SleepAnalyzer() {
 
   useEffect(() => {
     loadWeeklyHistory()
+    
+    const runDemo = async () => {
+      if (isDemoMode()) {
+        setDemoMode(false) // Clear global demo mode flag immediately to prevent repeat triggers
+        const demoData = getDemoData('sleep')
+        if (demoData) {
+          // Fill form parameters based on demoData
+          setBedtime('23:30')
+          setWaketime('04:30') // 5 hours slept
+          setSnoring('Yes')
+          setBreathingDiff('Yes')
+          setWakings(3)
+          setRested(2)
+          
+          setTimeout(() => {
+            handleFormAnalyze()
+          }, 1200)
+        }
+      }
+    }
+    runDemo()
   }, [])
 
   const loadWeeklyHistory = () => {
@@ -43,7 +65,7 @@ export default function SleepAnalyzer() {
   }
 
   const handleFormAnalyze = async (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     setLoading(true)
     setError('')
     setCurrentResult(null)
@@ -164,7 +186,12 @@ export default function SleepAnalyzer() {
       )}
 
       {loading ? (
-        <LoadingSpinner message={loadingMsg} />
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold animate-pulse shadow-glow flex items-center gap-2">
+            <span>🔬</span> {loadingMsg}
+          </div>
+          <Skeleton />
+        </div>
       ) : currentResult ? (
         <div className="space-y-8 fade-in">
           {/* Circular Score Indicator */}

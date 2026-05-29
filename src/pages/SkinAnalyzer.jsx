@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { analyzeImage } from '../utils/groqApi'
-import { saveResult } from '../utils/localStorage'
+import { saveResult, isDemoMode, setDemoMode, getApiKey } from '../utils/localStorage'
 import diseaseData from '../data/disease_data.json'
+import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import WebcamCapture from '../components/WebcamCapture'
+import Skeleton from '../components/Skeleton'
 
 export default function SkinAnalyzer() {
   const [imageFile, setImageFile] = useState(null)
@@ -12,10 +14,56 @@ export default function SkinAnalyzer() {
   const [activeTab, setActiveTab] = useState('upload') // 'upload' or 'webcam'
   const [location, setLocation] = useState('')
   const [itching, setItching] = useState('Mild') // Mild, Moderate, Severe
+  const [presetData, setPresetData] = useState(null)
   
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [currentResult, setCurrentResult] = useState(null)
+
+  useEffect(() => {
+    const runDemo = async () => {
+      const isAutopilot = localStorage.getItem('visiondx_autopilot') === 'active' && localStorage.getItem('visiondx_autopilot_step') === 'skin'
+      const storedTrigger = localStorage.getItem('visiondx_nav_preset_trigger')
+      
+      let preset = null
+      if (storedTrigger) {
+        const parsed = JSON.parse(storedTrigger)
+        if (parsed.page === '/skin-analyzer') {
+          preset = demoPresets.skin.find(p => p.id === parsed.presetId)
+          localStorage.removeItem('visiondx_nav_preset_trigger')
+        }
+      }
+      
+      if (!preset && (isDemoMode() || isAutopilot)) {
+        if (isDemoMode()) setDemoMode(false)
+        preset = demoPresets.skin[0]
+      }
+      
+      if (preset) {
+        const blob = await fetch(preset.image).then(res => res.blob())
+        const file = new File([blob], preset.fileName, { type: preset.fileName.endsWith('.jpg') ? "image/jpeg" : "image/png" })
+        setImageFile(file)
+        setImagePreview(preset.image)
+        setLocation(preset.location || '')
+        setItching(preset.itching || 'Mild')
+        setPresetData(preset)
+        
+        if (isAutopilot) {
+          setLoading(true)
+          setTimeout(() => {
+            handleAnalyze(null, file, preset)
+          }, 1200)
+        }
+      }
+    }
+    runDemo()
+
+    const handleNavTrigger = () => {
+      runDemo()
+    }
+    window.addEventListener('visiondx-preset-triggered', handleNavTrigger)
+    return () => window.removeEventListener('visiondx-preset-triggered', handleNavTrigger)
+  }, [])
 
   const handleImageChange = (file) => {
     if (!file) return
@@ -40,9 +88,10 @@ export default function SkinAnalyzer() {
     setError('')
   }
 
-  const handleAnalyze = async (e) => {
+  const handleAnalyze = async (e, customFile, forcePreset) => {
     if (e) e.preventDefault()
-    if (!imageFile) {
+    const activeFile = customFile || imageFile
+    if (!activeFile) {
       setError('Please capture or upload a skin photo to analyze.')
       return
     }
@@ -51,13 +100,28 @@ export default function SkinAnalyzer() {
     setError('')
     setCurrentResult(null)
 
+    // Preset simulated fallback mode if API keys are missing
+    const activePreset = forcePreset || presetData
+    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
+    if (activePreset && activeFile.name === activePreset.fileName && !hasKey) {
+      setTimeout(() => {
+        const saved = saveResult('skin', activePreset.fallbackResult)
+        setCurrentResult(saved)
+        setLoading(false)
+        if (localStorage.getItem('visiondx_autopilot') === 'active') {
+          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'skin', result: saved } }))
+        }
+      }, 1500)
+      return
+    }
+
     const prompt = `You are an expert dermatological AI assistant. Analyze this close-up image of the patient's skin lesion or rash. Location: "${location || 'Unspecified'}". Itching level: "${itching}". 
 1) Identify any visible conditions such as Melanoma, Basal-cell carcinoma, Squamous-cell carcinoma, Dermatitis, Psoriasis, Contact dermatitis, Dermatophytosis, Hives, Rosacea, Chickenpox, Measles, Shingles, Impetigo, Scabies, Cellulitis, Acne, or Vitiligo.
 2) Evaluate the ABCDE criteria if applicable (Asymmetry, Border irregularity, Color variation, Diameter, Evolving).
 3) Provide a clear assessment of severity and urgency. End your response with exactly one of these urgency flags: NORMAL, SEE_DOCTOR, or EMERGENCY.`
 
     try {
-      const aiResponse = await analyzeImage(imageFile, prompt)
+      const aiResponse = await analyzeImage(activeFile, prompt)
       
       // Grounding: Match AI response against diseaseData.skin keys
       const skinConditions = diseaseData.skin || {}
@@ -95,6 +159,10 @@ export default function SkinAnalyzer() {
 
       const saved = saveResult('skin', resultData)
       setCurrentResult(saved)
+
+      if (localStorage.getItem('visiondx_autopilot') === 'active') {
+        window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'skin', result: saved } }))
+      }
     } catch (err) {
       setError(err.message || 'Failed to analyze skin image. Please check your API key or try again.')
     } finally {
@@ -107,6 +175,7 @@ export default function SkinAnalyzer() {
     setImagePreview('')
     setLocation('')
     setItching('Mild')
+    setPresetData(null)
     setCurrentResult(null)
     setError('')
   }
@@ -140,7 +209,12 @@ export default function SkinAnalyzer() {
       )}
 
       {loading ? (
-        <LoadingSpinner message="Evaluating lesion asymmetry, border irregularity, and color variation..." />
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold animate-pulse shadow-glow flex items-center gap-2">
+            <span>🔬</span> Evaluating lesion asymmetry, border irregularity, and color variation...
+          </div>
+          <Skeleton />
+        </div>
       ) : currentResult ? (
         <div className="space-y-8 fade-in">
           <ResultCard data={currentResult} />
@@ -180,6 +254,36 @@ export default function SkinAnalyzer() {
                 </button>
               </div>
             </div>
+
+            {/* Interactive Demo Presets */}
+            {activeTab === 'upload' && !imagePreview && (
+              <div className="bg-[#020810]/40 p-5 rounded-2xl border border-white/5 space-y-3">
+                <div className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                  <span>✨</span> Clinical Demo Presets (No Photo Required):
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {demoPresets.skin.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={async () => {
+                        const blob = await fetch(preset.image).then(res => res.blob())
+                        const file = new File([blob], preset.fileName, { type: 'image/png' })
+                        setImageFile(file)
+                        setImagePreview(preset.image)
+                        setLocation(preset.location)
+                        setItching(preset.itching)
+                        setPresetData(preset)
+                      }}
+                      className="p-3.5 text-left rounded-xl bg-white/5 hover:bg-rose-500/10 border border-white/10 hover:border-rose-500/30 transition-all flex flex-col justify-between gap-1.5 group cursor-pointer"
+                    >
+                      <div className="text-xs font-bold text-white group-hover:text-rose-400 transition-colors line-clamp-1">{preset.title}</div>
+                      <div className="text-[10px] text-white/50 line-clamp-2 leading-relaxed">{preset.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {activeTab === 'webcam' ? (
               <WebcamCapture onCapture={handleWebcamCapture} label="Open Live Skin Camera" />
@@ -261,17 +365,29 @@ export default function SkinAnalyzer() {
               </div>
             </div>
 
+            {presetData && !currentResult && (
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border-2 border-dashed border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center gap-3 animate-pulse shadow-[0_0_20px_rgba(16,185,129,0.15)] pt-2">
+                <span className="text-xl">💡</span>
+                <div>
+                  <div className="font-bold text-white text-sm">Demo Case Loaded!</div>
+                  <div className="mt-0.5 text-white/70">Click the pulsing <b>"Run High-Fidelity Demo Analysis"</b> button below to execute the AI clinical simulation.</div>
+                </div>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={handleAnalyze}
               disabled={!imageFile}
               className={`w-full py-4 rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2 shadow-xl ${
                 imageFile
-                  ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:scale-[1.01] shadow-rose-500/20'
+                  ? presetData && !currentResult
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-navy-950 hover:scale-[1.01] animate-bounce shadow-emerald-500/40 ring-4 ring-emerald-400/30'
+                    : 'bg-gradient-to-r from-rose-500 to-pink-600 text-white hover:scale-[1.01] shadow-rose-500/20'
                   : 'bg-white/5 text-white/40 cursor-not-allowed border border-white/5'
               }`}
             >
-              <span>🔬</span> Analyze Skin with Vision AI
+              <span>🔬</span> {presetData && !currentResult ? 'Run High-Fidelity Demo Analysis' : 'Analyze Skin with Vision AI'}
             </button>
           </div>
 
