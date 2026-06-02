@@ -3,7 +3,6 @@ import { analyzeImage, analyzeText } from '../utils/groqApi'
 import { saveResult, isDemoMode, setDemoMode, getApiKey } from '../utils/localStorage'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
-import LoadingSpinner from '../components/LoadingSpinner'
 import WebcamCapture from '../components/WebcamCapture'
 import Skeleton from '../components/Skeleton'
 
