@@ -1,5 +1,3 @@
-import { formatTime } from '../utils/localStorage'
-
 export function usePrintReport() {
   const printReport = (moduleName, data) => {
     if (!data) return
