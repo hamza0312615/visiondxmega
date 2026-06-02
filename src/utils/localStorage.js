@@ -8,7 +8,7 @@ const API_KEY = 'visiondx_api_key'
 export function saveResult(type, data) {
   const history = getHistory()
   const entry = {
-    id: Date.now().toString(),
+    id: Date.now().toString() + Math.random().toString(36).substring(2),
     type,
     timestamp: new Date().toISOString(),
     ...data,

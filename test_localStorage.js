@@ -86,7 +86,7 @@ try {
   assert.strictEqual(eyeHistory[0].details.condition, 'Cataract', 'Condition should match Cataract')
 
   deleteEntry(entry1.id)
-  assert.strictEqual(getHistory().length, 1, 'History length should decrease after deletion')
+  assert.strictEqual(getHistory().length, 1, 'History length should decrease to 1 after deletion')
   assert.strictEqual(getHistory()[0].type, 'skin', 'Remaining entry should be skin')
   console.log('  [✓] Test 2 Passed successfully.')
 
