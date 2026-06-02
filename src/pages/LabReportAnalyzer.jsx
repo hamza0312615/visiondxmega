@@ -6,6 +6,7 @@ import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import WebcamCapture from '../components/WebcamCapture'
 import Skeleton from '../components/Skeleton'
+import { useResetAnalyzer } from '../hooks/useResetAnalyzer'
 
 export default function LabReportAnalyzer() {
   const [imageFile, setImageFile] = useState(null)
@@ -258,16 +259,18 @@ Patient Profile context: Name: ${profile.name}, Age: ${profile.age}, Gender: ${p
     }
   }
 
-  const resetAnalyzer = () => {
-    setImageFile(null)
-    setImagePreview('')
-    setPresetData(null)
-    setCurrentResult(null)
-    setError('')
-    if (templates[reportType]) {
-      setManualParams(templates[reportType])
+  const resetAnalyzer = useResetAnalyzer({
+    setImageFile,
+    setImagePreview,
+    setPresetData,
+    setCurrentResult,
+    setError,
+    customReset: () => {
+      if (templates[reportType]) {
+        setManualParams(templates[reportType])
+      }
     }
-  }
+  })
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12 slide-in printable-area">
