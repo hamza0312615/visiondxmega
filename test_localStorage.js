@@ -71,6 +71,9 @@ try {
   // Test 2: History CRUD Operations
   console.log('\n  Running Test 2: History Operations...')
   clearHistory()
+  let fakeTime = 1000;
+  const originalDateNow = Date.now;
+  Date.now = () => fakeTime++;
   assert.deepStrictEqual(getHistory(), [], 'History should be empty after clearHistory')
   
   const entry1 = saveResult('eye', { summary: 'Eye scan demo', details: { condition: 'Cataract' } })
@@ -89,6 +92,7 @@ try {
   assert.strictEqual(getHistory().length, 1, 'History length should decrease after deletion')
   assert.strictEqual(getHistory()[0].type, 'skin', 'Remaining entry should be skin')
   console.log('  [✓] Test 2 Passed successfully.')
+  Date.now = originalDateNow;
 
   // Test 3: Risk Log Operations
   console.log('\n  Running Test 3: Risk Log Tracker...')

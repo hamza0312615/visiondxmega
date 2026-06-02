@@ -1,4 +1,4 @@
-import { getApiKey } from './localStorage'
+import { getApiKey } from './localStorage.js'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1'
