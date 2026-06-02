@@ -1,22 +1,21 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { transcribeAudio, analyzeText } from '../utils/groqApi'
 import { saveResult, getWhatsAppConfig } from '../utils/localStorage'
 import ResultCard from '../components/ResultCard'
-import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
+import VoiceDocStandardForm from '../components/VoiceDocStandardForm'
+import VoiceDocBotForm from '../components/VoiceDocBotForm'
+import { useAudioRecorder } from '../hooks/useAudioRecorder'
+import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis'
 
 export default function VoiceDoc() {
-  const [recording, setRecording] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(10)
   const [language, setLanguage] = useState('Urdu / اردو')
-  const [audioFile, setAudioFile] = useState(null)
   const [textInput, setTextInput] = useState('')
   
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('Transcribing voice audio...')
-  const [error, setError] = useState('')
   const [currentResult, setCurrentResult] = useState(null)
-  const [speaking, setSpeaking] = useState(false)
+  const [error, setError] = useState('')
 
   // Bot Mode State
   const [activeModeTab, setActiveModeTab] = useState('standard')
@@ -27,97 +26,11 @@ export default function VoiceDoc() {
   const [botSymptoms, setBotSymptoms] = useState('')
   const [botDoctorPhone, setBotDoctorPhone] = useState('')
 
-  const mediaRecorderRef = useRef(null)
-  const audioChunksRef = useRef([])
-  const timerIntervalRef = useRef(null)
-  const synthRef = useRef(window.speechSynthesis)
+  const { speaking, speakText, stopSpeaking, toggleSpeech } = useSpeechSynthesis()
 
   useEffect(() => {
-    const profile = JSON.parse(localStorage.getItem('visiondx_user') || '{}')
-    setBotPatientName(profile.name || 'Abdullah')
-    setBotPatientAge(profile.age || '18')
-    setBotPatientGender(profile.gender || 'Male')
-    setBotPatientCity(profile.city || 'Rahim Yar Khan')
-    
-    const waConfig = getWhatsAppConfig()
-    setBotDoctorPhone(waConfig.doctorPhone || '923001234567')
-
-    const runAutopilot = async () => {
-      const isAutopilot = localStorage.getItem('visiondx_autopilot') === 'active' && localStorage.getItem('visiondx_autopilot_step') === 'voicedoc'
-      if (isAutopilot) {
-        setTextInput("I have high fever and severe dry cough")
-        setLanguage("Urdu / اردو")
-        
-        setTimeout(() => {
-          handleTextSubmit(null, "I have high fever and severe dry cough")
-        }, 1505)
-      }
-    }
-    runAutopilot()
-
-    return () => {
-      if (synthRef.current) {
-        synthRef.current.cancel()
-      }
-    }
-  }, [])
-
-  const startRecording = async () => {
-    setError('')
-    setCurrentResult(null)
-    setAudioFile(null)
-    if (synthRef.current) synthRef.current.cancel()
-    setSpeaking(false)
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
-      mediaRecorderRef.current = mediaRecorder
-      audioChunksRef.current = []
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
-        }
-      }
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        stream.getTracks().forEach(track => track.stop())
-        setAudioFile(audioBlob)
-        processVoice(audioBlob)
-      }
-
-      mediaRecorder.start()
-      setRecording(true)
-      setTimeLeft(10)
-
-      timerIntervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerIntervalRef.current)
-            mediaRecorder.stop()
-            setRecording(false)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-
-    } catch (err) {
-      setError('Microphone access denied. Please allow microphone access to use VoiceDoc.')
-      setRecording(false)
-      console.error(err)
-    }
-  }
-
-  const stopRecordingEarly = () => {
-    if (mediaRecorderRef.current && recording) {
-      clearInterval(timerIntervalRef.current)
-      mediaRecorderRef.current.stop()
-      setRecording(false)
-    }
-  }
+    if (audioError) setError(audioError)
+  }, [audioError])
 
   const processVoice = async (audioBlob) => {
     setLoading(true)
@@ -186,6 +99,43 @@ Instructions:
       setLoading(false)
     }
   }
+
+  const {
+    recording,
+    timeLeft,
+    error: audioError,
+    startRecording,
+    stopRecordingEarly,
+    resetRecording
+  } = useAudioRecorder(processVoice)
+
+  useEffect(() => {
+    const profile = JSON.parse(localStorage.getItem('visiondx_user') || '{}')
+    setBotPatientName(profile.name || 'Abdullah')
+    setBotPatientAge(profile.age || '18')
+    setBotPatientGender(profile.gender || 'Male')
+    setBotPatientCity(profile.city || 'Rahim Yar Khan')
+
+    const waConfig = getWhatsAppConfig()
+    setBotDoctorPhone(waConfig.doctorPhone || '923001234567')
+
+    const runAutopilot = async () => {
+      const isAutopilot = localStorage.getItem('visiondx_autopilot') === 'active' && localStorage.getItem('visiondx_autopilot_step') === 'voicedoc'
+      if (isAutopilot) {
+        setTextInput("I have high fever and severe dry cough")
+        setLanguage("Urdu / اردو")
+
+        setTimeout(() => {
+          handleTextSubmit(null, "I have high fever and severe dry cough")
+        }, 1505)
+      }
+    }
+    runAutopilot()
+
+    return () => {
+      stopSpeaking()
+    }
+  }, [stopSpeaking]) // Add dependencies safely
 
   const handleTextSubmit = async (e, customText) => {
     if (e) e.preventDefault()
@@ -256,68 +206,6 @@ Instructions:
       setError(err.message || 'Failed to process chat message. Please check your API key or try again.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const speakText = (text, lang) => {
-    if (!synthRef.current) return
-    synthRef.current.cancel()
-
-    if (!text) return
-
-    const utterance = new SpeechSynthesisUtterance(text)
-    
-    let langCode = 'en-US'
-    if (lang.includes('Roman')) langCode = 'ur-roman'
-    else if (lang.includes('Urdu')) {
-      const voices = synthRef.current.getVoices()
-      const hasUrduVoice = !!voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu'))
-      langCode = hasUrduVoice ? 'ur-PK' : 'ur-roman'
-    }
-    else if (lang.includes('Hindi')) langCode = 'hi-IN'
-    else if (lang.includes('Punjabi')) langCode = 'pa-IN'
-    else if (lang.includes('Pashto')) langCode = 'ps-AF'
-    else if (lang.includes('Sindhi')) langCode = 'sd-PK'
-    else if (lang.includes('Arabic')) langCode = 'ar-SA'
-    else if (lang.includes('Bengali')) langCode = 'bn-BD'
-
-    // If we are speaking Roman Urdu, we use standard English voice
-    const targetLangCode = langCode === 'ur-roman' ? 'en-US' : langCode
-    utterance.lang = targetLangCode
-    utterance.rate = langCode === 'ur-roman' ? 0.88 : 0.9 // slightly slower for Roman Urdu to sound natural
-
-    const voices = synthRef.current.getVoices()
-    let bestVoice = voices.find(v => v.lang.toLowerCase() === targetLangCode.toLowerCase()) ||
-                     voices.find(v => v.lang.toLowerCase().startsWith(targetLangCode.split('-')[0].toLowerCase()))
-
-    if (langCode === 'ur-PK') {
-      bestVoice = voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu')) || bestVoice
-    } else if (langCode === 'ur-roman') {
-      bestVoice = voices.find(v => v.lang.startsWith('en')) || bestVoice
-    } else if (langCode === 'hi-IN') {
-      bestVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi') || v.name.includes('Google ID')) || bestVoice
-    } else if (langCode === 'ar-SA') {
-      bestVoice = voices.find(v => v.lang.includes('ar') || v.name.includes('Arabic')) || bestVoice
-    }
-
-    if (bestVoice) {
-      utterance.voice = bestVoice
-    }
-
-    utterance.onstart = () => setSpeaking(true)
-    utterance.onend = () => setSpeaking(false)
-    utterance.onerror = () => setSpeaking(false)
-
-    synthRef.current.speak(utterance)
-  }
-
-  const toggleSpeech = () => {
-    if (!synthRef.current) return
-    if (speaking) {
-      synthRef.current.cancel()
-      setSpeaking(false)
-    } else if (currentResult && currentResult.speechText) {
-      speakText(currentResult.speechText, language)
     }
   }
 
@@ -410,14 +298,11 @@ Instructions:
   }
 
   const resetDoctor = () => {
-    if (synthRef.current) synthRef.current.cancel()
-    setSpeaking(false)
-    setAudioFile(null)
+    stopSpeaking()
     setTextInput('')
     setCurrentResult(null)
     setError('')
-    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
-    setRecording(false)
+    resetRecording()
   }
 
   return (
@@ -462,7 +347,7 @@ Instructions:
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={toggleSpeech}
+                onClick={() => toggleSpeech(currentResult?.speechText, language)}
                 className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-lg transition-all ${
                   speaking ? 'bg-amber-500 text-navy-950 animate-pulse shadow-amber-500/30' : 'bg-emerald-500 text-navy-950 hover:scale-105 shadow-emerald-500/30'
                 }`}
@@ -525,184 +410,33 @@ Instructions:
           </div>
 
           {activeModeTab === 'standard' ? (
-            <div className="glass-card p-8 sm:p-12 rounded-3xl border border-white/10 text-center space-y-8 shadow-2xl fade-in">
-              {/* Language Selector */}
-              <div className="max-w-xs mx-auto space-y-2">
-                <label className="block text-xs font-bold text-white/70 uppercase tracking-wider">
-                  Select Spoken / Written Language
-                </label>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="input-field cursor-pointer bg-navy-900 text-center font-bold text-base shadow-inner"
-                >
-                  <option value="Urdu / اردو">Urdu / اردو</option>
-                  <option value="Roman Urdu / رومن اردو">Roman Urdu / رومن اردو</option>
-                  <option value="English">English</option>
-                  <option value="Punjabi / پنجابی">Punjabi / پنجابی</option>
-                  <option value="Pashto / پښتو">Pashto / پښتو</option>
-                  <option value="Sindhi / سنڌي">Sindhi / سنڌي</option>
-                  <option value="Hindi / हिन्दी">Hindi / हिन्दी</option>
-                </select>
-              </div>
-
-              {/* Recording UI / Big Mic Button */}
-              <div className="flex flex-col items-center justify-center py-6">
-                <button
-                  type="button"
-                  onClick={recording ? stopRecordingEarly : startRecording}
-                  className={`w-36 h-36 rounded-full flex items-center justify-center text-6xl shadow-2xl transition-all duration-300 ${
-                    recording
-                      ? 'bg-red-500 text-white recording-pulse scale-110 cursor-pointer shadow-[0_0_50px_rgba(239,68,68,0.6)]'
-                      : 'bg-gradient-to-tr from-emerald-500 to-teal-500 text-navy-950 hover:scale-105 hover:shadow-[0_0_40px_rgba(16,185,129,0.5)] cursor-pointer'
-                  }`}
-                  title={recording ? 'Click to stop recording early' : 'Click to start 10s recording'}
-                >
-                  {recording ? '⏹️' : '🎙️'}
-                </button>
-
-                <div className="mt-8 space-y-2">
-                  <h3 className="text-2xl font-bold text-white font-outfit">
-                    {recording ? `Listening to Symptoms... ${timeLeft}s left` : 'Click Microphone to Speak'}
-                  </h3>
-                  <p className="text-sm text-white/50 max-w-md mx-auto leading-relaxed">
-                    {recording
-                      ? 'Speak clearly into your device microphone. Click the stop button when finished.'
-                      : 'Record up to 10 seconds of your symptoms for instant Whisper AI voice triage.'}
-                  </p>
-                </div>
-
-                {/* Waveform Visualization during recording */}
-                {recording && (
-                  <div className="flex items-center justify-center gap-1.5 h-16 mt-8 fade-in">
-                    <span className="wave-bar bg-emerald-500" />
-                    <span className="wave-bar bg-emerald-500" />
-                    <span className="wave-bar bg-emerald-500" />
-                    <span className="wave-bar bg-emerald-500" />
-                    <span className="wave-bar bg-emerald-500" />
-                    <span className="wave-bar bg-emerald-500" />
-                    <span className="wave-bar bg-emerald-500" />
-                    <span className="wave-bar bg-emerald-500" />
-                    <span className="wave-bar bg-emerald-500" />
-                    <span className="wave-bar bg-emerald-500" />
-                    <span className="wave-bar bg-emerald-500" />
-                    <span className="wave-bar bg-emerald-500" />
-                  </div>
-                )}
-              </div>
-
-              {/* Text Chat Option */}
-              <div className="w-full max-w-lg mx-auto mt-12 pt-8 border-t border-white/10 space-y-4 fade-in">
-                <h4 className="text-sm font-bold text-white/80 font-outfit flex items-center justify-center gap-2">
-                  <span>💬</span> Or Type Your Message / Symptoms
-                </h4>
-                <form onSubmit={handleTextSubmit} className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder={`Type symptoms in ${language.split(' ')[0]} or English...`}
-                    value={textInput}
-                    onChange={(e) => setTextInput(e.target.value)}
-                    className="input-field flex-1 py-3.5 text-base shadow-inner"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!textInput.trim()}
-                    className="btn-primary px-6 py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/20 disabled:opacity-50"
-                  >
-                    Send
-                  </button>
-                </form>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300/90 leading-relaxed max-w-lg mx-auto shadow-inner">
-                💡 <b>Rural Healthcare Note:</b> VoiceDoc is optimized for patients with limited literacy or digital access. Triage summaries can be instantly forwarded to local clinic WhatsApp numbers for urgent follow-up.
-              </div>
-            </div>
+            <VoiceDocStandardForm
+              language={language}
+              setLanguage={setLanguage}
+              recording={recording}
+              timeLeft={timeLeft}
+              startRecording={startRecording}
+              stopRecordingEarly={stopRecordingEarly}
+              textInput={textInput}
+              setTextInput={setTextInput}
+              handleTextSubmit={handleTextSubmit}
+            />
           ) : (
-            /* Bot Mode Triage Dispatch Form */
-            <form onSubmit={handleBotSubmit} className="glass-card p-8 sm:p-10 rounded-3xl border border-white/10 text-left space-y-6 shadow-2xl fade-in">
-              <h3 className="text-xl font-bold text-white font-outfit border-b border-white/10 pb-4 flex items-center gap-2">
-                <span>🤖</span> WhatsApp Triage Referral Bot
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Patient Name</label>
-                  <input
-                    type="text"
-                    value={botPatientName}
-                    onChange={(e) => setBotPatientName(e.target.value)}
-                    className="input-field bg-navy-900 border-white/10 hover:border-emerald-500/50"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Age</label>
-                    <input
-                      type="number"
-                      value={botPatientAge}
-                      onChange={(e) => setBotPatientAge(e.target.value)}
-                      className="input-field bg-navy-900 border-white/10 hover:border-emerald-500/50"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Gender</label>
-                    <select
-                      value={botPatientGender}
-                      onChange={(e) => setBotPatientGender(e.target.value)}
-                      className="input-field bg-navy-900 border-white/10 hover:border-emerald-500/50 cursor-pointer"
-                    >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Location / City</label>
-                  <input
-                    type="text"
-                    value={botPatientCity}
-                    onChange={(e) => setBotPatientCity(e.target.value)}
-                    className="input-field bg-navy-900 border-white/10 hover:border-emerald-500/50"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Doctor WhatsApp Phone</label>
-                  <input
-                    type="text"
-                    value={botDoctorPhone}
-                    onChange={(e) => setBotDoctorPhone(e.target.value)}
-                    className="input-field bg-navy-900 font-mono border-white/10 hover:border-emerald-500/50"
-                    required
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Patient Symptoms & Clinical Notes</label>
-                  <textarea
-                    rows={4}
-                    value={botSymptoms}
-                    onChange={(e) => setBotSymptoms(e.target.value)}
-                    placeholder="Describe patient symptoms here (e.g. high fever, productive cough, high WBC counts detected)..."
-                    className="input-field bg-navy-900 border-white/10 hover:border-emerald-500/50 text-sm"
-                    required
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-navy-950 font-extrabold text-base hover:scale-[1.01] transition-all flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20"
-              >
-                <span>🤖</span> Compile & Send Triage via WhatsApp
-              </button>
-            </form>
+            <VoiceDocBotForm
+              botPatientName={botPatientName}
+              setBotPatientName={setBotPatientName}
+              botPatientAge={botPatientAge}
+              setBotPatientAge={setBotPatientAge}
+              botPatientGender={botPatientGender}
+              setBotPatientGender={setBotPatientGender}
+              botPatientCity={botPatientCity}
+              setBotPatientCity={setBotPatientCity}
+              botDoctorPhone={botDoctorPhone}
+              setBotDoctorPhone={setBotDoctorPhone}
+              botSymptoms={botSymptoms}
+              setBotSymptoms={setBotSymptoms}
+              handleBotSubmit={handleBotSubmit}
+            />
           )}
         </div>
       )}
