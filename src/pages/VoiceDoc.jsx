@@ -1,47 +1,52 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { transcribeAudio, analyzeText } from '../utils/groqApi'
 import { saveResult, getWhatsAppConfig } from '../utils/localStorage'
 import ResultCard from '../components/ResultCard'
-import LoadingSpinner from '../components/LoadingSpinner'
+
 import Skeleton from '../components/Skeleton'
 
+import useAudioRecorder from '../hooks/useAudioRecorder'
+import useTextToSpeech from '../hooks/useTextToSpeech'
+import { getLanguageInstructions } from '../utils/languageUtils'
+import BotModeForm from '../components/BotModeForm'
+
 export default function VoiceDoc() {
-  const [recording, setRecording] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(10)
   const [language, setLanguage] = useState('Urdu / اردو')
-  const [audioFile, setAudioFile] = useState(null)
   const [textInput, setTextInput] = useState('')
   
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('Transcribing voice audio...')
-  const [error, setError] = useState('')
   const [currentResult, setCurrentResult] = useState(null)
-  const [speaking, setSpeaking] = useState(false)
 
-  // Bot Mode State
   const [activeModeTab, setActiveModeTab] = useState('standard')
-  const [botPatientName, setBotPatientName] = useState('')
-  const [botPatientAge, setBotPatientAge] = useState('')
-  const [botPatientGender, setBotPatientGender] = useState('Male')
-  const [botPatientCity, setBotPatientCity] = useState('')
-  const [botSymptoms, setBotSymptoms] = useState('')
-  const [botDoctorPhone, setBotDoctorPhone] = useState('')
 
-  const mediaRecorderRef = useRef(null)
-  const audioChunksRef = useRef([])
-  const timerIntervalRef = useRef(null)
-  const synthRef = useRef(window.speechSynthesis)
+  const {
+    speaking,
+    speakText,
+    stopSpeaking,
+    toggleSpeech: originalToggleSpeech
+  } = useTextToSpeech();
+
+  const handleRecordingComplete = (audioBlob) => {
+    processVoice(audioBlob);
+  };
+
+  const {
+    recording,
+    timeLeft,
+    error: micError,
+    startRecording,
+    stopRecordingEarly,
+    setAudioFile,
+    setError,
+    clearTimer
+  } = useAudioRecorder(handleRecordingComplete);
+
+
+  const [localError, setLocalError] = useState('');
+  const displayError = micError || localError;
 
   useEffect(() => {
-    const profile = JSON.parse(localStorage.getItem('visiondx_user') || '{}')
-    setBotPatientName(profile.name || 'Abdullah')
-    setBotPatientAge(profile.age || '18')
-    setBotPatientGender(profile.gender || 'Male')
-    setBotPatientCity(profile.city || 'Rahim Yar Khan')
-    
-    const waConfig = getWhatsAppConfig()
-    setBotDoctorPhone(waConfig.doctorPhone || '923001234567')
-
     const runAutopilot = async () => {
       const isAutopilot = localStorage.getItem('visiondx_autopilot') === 'active' && localStorage.getItem('visiondx_autopilot_step') === 'voicedoc'
       if (isAutopilot) {
@@ -54,95 +59,27 @@ export default function VoiceDoc() {
       }
     }
     runAutopilot()
-
-    return () => {
-      if (synthRef.current) {
-        synthRef.current.cancel()
-      }
-    }
   }, [])
 
-  const startRecording = async () => {
-    setError('')
-    setCurrentResult(null)
-    setAudioFile(null)
-    if (synthRef.current) synthRef.current.cancel()
-    setSpeaking(false)
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
-      mediaRecorderRef.current = mediaRecorder
-      audioChunksRef.current = []
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
-        }
-      }
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        stream.getTracks().forEach(track => track.stop())
-        setAudioFile(audioBlob)
-        processVoice(audioBlob)
-      }
-
-      mediaRecorder.start()
-      setRecording(true)
-      setTimeLeft(10)
-
-      timerIntervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerIntervalRef.current)
-            mediaRecorder.stop()
-            setRecording(false)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-
-    } catch (err) {
-      setError('Microphone access denied. Please allow microphone access to use VoiceDoc.')
-      setRecording(false)
-      console.error(err)
-    }
-  }
-
-  const stopRecordingEarly = () => {
-    if (mediaRecorderRef.current && recording) {
-      clearInterval(timerIntervalRef.current)
-      mediaRecorderRef.current.stop()
-      setRecording(false)
-    }
-  }
+  const handleStartRecording = () => {
+    setLocalError('');
+    setCurrentResult(null);
+    stopSpeaking();
+    startRecording();
+  };
 
   const processVoice = async (audioBlob) => {
     setLoading(true)
-    setError('')
+    setLocalError('')
     setCurrentResult(null)
 
     try {
       setLoadingMsg('Transcribing patient speech with Whisper AI...')
       const transcription = await transcribeAudio(audioBlob)
 
-      const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : []
-      const hasUrduVoice = !!voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu'))
-      const useRomanUrdu = language.includes('Roman') || (language.includes('Urdu') && !hasUrduVoice)
+      const { displayLangName, langInstruction } = getLanguageInstructions(language);
 
-      const displayLangName = useRomanUrdu ? 'Roman Urdu / رومن اردو' : language
       setLoadingMsg(`Analyzing triage symptoms and translating response into ${displayLangName}...`)
-
-      let langInstruction = ''
-      if (useRomanUrdu) {
-        langInstruction = `Translate/generate your compassionate clinical response directly in highly conversational, friendly, and clear Roman Urdu (Urdu language written in standard Latin/English letters, e.g., "Aap ki report ke mutabik sab theek hai. Kisi fikar ki baat nahi hai"). Use simple everyday phrases. Keep it natural, easy to read aloud by an English voice, and extremely concise. Only write in standard Latin letters. Do NOT use Urdu script.`
-      } else if (language.includes('Urdu')) {
-        langInstruction = `Provide compassionate, clear, and reassuring first-aid or home care advice directly in extremely clear, polite, and simple conversational Urdu (اردو) script. Use standard everyday Urdu words that are very easy to understand and speak aloud. Avoid difficult or archaic Persian/Arabic medical vocabulary (for example, use 'bukhār' instead of 'tap-e-shuda', 'jild' instead of 'poast', 'āṅkh' instead of 'chashm'). Keep it concise.`
-      } else {
-        langInstruction = `Provide compassionate, clear, and reassuring first-aid or home care advice directly in clear, simple, conversational "${language}". Keep sentences simple and easy to understand when spoken aloud. Keep it concise.`
-      }
 
       const prompt = `You are VoiceDoc, an empathetic, highly skilled AI medical triage doctor designed for rural and remote community healthcare. 
 Patient's spoken symptoms (transcribed): "${transcription || '[Voice recorded]'}".
@@ -181,7 +118,7 @@ Instructions:
       speakText(cleanSpeechText, language)
 
     } catch (err) {
-      setError(err.message || 'Failed to process voice triage. Please check your API key or try again.')
+      setLocalError(err.message || 'Failed to process voice triage. Please check your API key or try again.')
     } finally {
       setLoading(false)
     }
@@ -193,25 +130,13 @@ Instructions:
     if (!activeText.trim()) return
 
     setLoading(true)
-    setError('')
+    setLocalError('')
     setCurrentResult(null)
 
     try {
-      const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : []
-      const hasUrduVoice = !!voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu'))
-      const useRomanUrdu = language.includes('Roman') || (language.includes('Urdu') && !hasUrduVoice)
+      const { displayLangName, langInstruction } = getLanguageInstructions(language);
 
-      const displayLangName = useRomanUrdu ? 'Roman Urdu / رومن اردو' : language
       setLoadingMsg(`Analyzing patient text message and translating response into ${displayLangName}...`)
-
-      let langInstruction = ''
-      if (useRomanUrdu) {
-        langInstruction = `Translate/generate your compassionate clinical response directly in highly conversational, friendly, and clear Roman Urdu (Urdu language written in standard Latin/English letters, e.g., "Aap ki report ke mutabik sab theek hai. Kisi fikar ki baat nahi hai"). Use simple everyday phrases. Keep it natural, easy to read aloud by an English voice, and extremely concise. Only write in standard Latin letters. Do NOT use Urdu script.`
-      } else if (language.includes('Urdu')) {
-        langInstruction = `Provide compassionate, clear, and reassuring first-aid or home care advice directly in extremely clear, polite, and simple conversational Urdu (اردو) script. Use standard everyday Urdu words that are very easy to understand and speak aloud. Avoid difficult or archaic Persian/Arabic medical vocabulary (for example, use 'bukhār' instead of 'tap-e-shuda', 'jild' instead of 'poast', 'āṅkh' instead of 'chashm'). Keep it concise.`
-      } else {
-        langInstruction = `Provide compassionate, clear, and reassuring first-aid or home care advice directly in clear, simple, conversational "${language}". Keep sentences simple and easy to understand when spoken aloud. Keep it concise.`
-      }
 
       const prompt = `You are VoiceDoc, an empathetic, highly skilled AI medical triage doctor designed for rural and remote community healthcare. 
 Patient's written symptoms: "${activeText}".
@@ -253,72 +178,14 @@ Instructions:
       }
 
     } catch (err) {
-      setError(err.message || 'Failed to process chat message. Please check your API key or try again.')
+      setLocalError(err.message || 'Failed to process chat message. Please check your API key or try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const speakText = (text, lang) => {
-    if (!synthRef.current) return
-    synthRef.current.cancel()
-
-    if (!text) return
-
-    const utterance = new SpeechSynthesisUtterance(text)
-    
-    let langCode = 'en-US'
-    if (lang.includes('Roman')) langCode = 'ur-roman'
-    else if (lang.includes('Urdu')) {
-      const voices = synthRef.current.getVoices()
-      const hasUrduVoice = !!voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu'))
-      langCode = hasUrduVoice ? 'ur-PK' : 'ur-roman'
-    }
-    else if (lang.includes('Hindi')) langCode = 'hi-IN'
-    else if (lang.includes('Punjabi')) langCode = 'pa-IN'
-    else if (lang.includes('Pashto')) langCode = 'ps-AF'
-    else if (lang.includes('Sindhi')) langCode = 'sd-PK'
-    else if (lang.includes('Arabic')) langCode = 'ar-SA'
-    else if (lang.includes('Bengali')) langCode = 'bn-BD'
-
-    // If we are speaking Roman Urdu, we use standard English voice
-    const targetLangCode = langCode === 'ur-roman' ? 'en-US' : langCode
-    utterance.lang = targetLangCode
-    utterance.rate = langCode === 'ur-roman' ? 0.88 : 0.9 // slightly slower for Roman Urdu to sound natural
-
-    const voices = synthRef.current.getVoices()
-    let bestVoice = voices.find(v => v.lang.toLowerCase() === targetLangCode.toLowerCase()) ||
-                     voices.find(v => v.lang.toLowerCase().startsWith(targetLangCode.split('-')[0].toLowerCase()))
-
-    if (langCode === 'ur-PK') {
-      bestVoice = voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu')) || bestVoice
-    } else if (langCode === 'ur-roman') {
-      bestVoice = voices.find(v => v.lang.startsWith('en')) || bestVoice
-    } else if (langCode === 'hi-IN') {
-      bestVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi') || v.name.includes('Google ID')) || bestVoice
-    } else if (langCode === 'ar-SA') {
-      bestVoice = voices.find(v => v.lang.includes('ar') || v.name.includes('Arabic')) || bestVoice
-    }
-
-    if (bestVoice) {
-      utterance.voice = bestVoice
-    }
-
-    utterance.onstart = () => setSpeaking(true)
-    utterance.onend = () => setSpeaking(false)
-    utterance.onerror = () => setSpeaking(false)
-
-    synthRef.current.speak(utterance)
-  }
-
-  const toggleSpeech = () => {
-    if (!synthRef.current) return
-    if (speaking) {
-      synthRef.current.cancel()
-      setSpeaking(false)
-    } else if (currentResult && currentResult.speechText) {
-      speakText(currentResult.speechText, language)
-    }
+  const handleToggleSpeech = () => {
+    originalToggleSpeech(currentResult, language);
   }
 
   const handleWhatsAppShare = async () => {
@@ -353,15 +220,23 @@ Instructions:
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank')
   }
 
-  const handleBotSubmit = async (e) => {
-    if (e) e.preventDefault()
+  const handleBotSubmit = async (formData) => {
+    const {
+        botPatientName,
+        botPatientAge,
+        botPatientGender,
+        botPatientCity,
+        botSymptoms,
+        botDoctorPhone
+    } = formData;
+
     if (!botSymptoms.trim()) {
-      setError('Please describe the patient symptoms.')
+      setLocalError('Please describe the patient symptoms.')
       return
     }
 
     setLoading(true)
-    setError('')
+    setLocalError('')
     setCurrentResult(null)
     setLoadingMsg('Structuring triage referral template with Llama AI...')
 
@@ -403,21 +278,21 @@ Instructions:
       window.open(`https://wa.me/${botDoctorPhone}?text=${encodeURIComponent(waText)}`, '_blank')
 
     } catch (err) {
-      setError(err.message || 'Failed to dispatch bot triage. Please try again.')
+      setLocalError(err.message || 'Failed to dispatch bot triage. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
   const resetDoctor = () => {
-    if (synthRef.current) synthRef.current.cancel()
-    setSpeaking(false)
+    stopSpeaking();
     setAudioFile(null)
     setTextInput('')
     setCurrentResult(null)
+    setLocalError('')
     setError('')
-    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
-    setRecording(false)
+    clearTimer()
+    stopRecordingEarly()
   }
 
   return (
@@ -442,9 +317,9 @@ Instructions:
         )}
       </div>
 
-      {error && (
+      {displayError && (
         <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-3 fade-in shadow-lg">
-          <span>⚠️</span> {error}
+          <span>⚠️</span> {displayError}
         </div>
       )}
 
@@ -462,7 +337,7 @@ Instructions:
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={toggleSpeech}
+                onClick={handleToggleSpeech}
                 className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-lg transition-all ${
                   speaking ? 'bg-amber-500 text-navy-950 animate-pulse shadow-amber-500/30' : 'bg-emerald-500 text-navy-950 hover:scale-105 shadow-emerald-500/30'
                 }`}
@@ -550,7 +425,7 @@ Instructions:
               <div className="flex flex-col items-center justify-center py-6">
                 <button
                   type="button"
-                  onClick={recording ? stopRecordingEarly : startRecording}
+                  onClick={recording ? stopRecordingEarly : handleStartRecording}
                   className={`w-36 h-36 rounded-full flex items-center justify-center text-6xl shadow-2xl transition-all duration-300 ${
                     recording
                       ? 'bg-red-500 text-white recording-pulse scale-110 cursor-pointer shadow-[0_0_50px_rgba(239,68,68,0.6)]'
@@ -619,90 +494,7 @@ Instructions:
               </div>
             </div>
           ) : (
-            /* Bot Mode Triage Dispatch Form */
-            <form onSubmit={handleBotSubmit} className="glass-card p-8 sm:p-10 rounded-3xl border border-white/10 text-left space-y-6 shadow-2xl fade-in">
-              <h3 className="text-xl font-bold text-white font-outfit border-b border-white/10 pb-4 flex items-center gap-2">
-                <span>🤖</span> WhatsApp Triage Referral Bot
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Patient Name</label>
-                  <input
-                    type="text"
-                    value={botPatientName}
-                    onChange={(e) => setBotPatientName(e.target.value)}
-                    className="input-field bg-navy-900 border-white/10 hover:border-emerald-500/50"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Age</label>
-                    <input
-                      type="number"
-                      value={botPatientAge}
-                      onChange={(e) => setBotPatientAge(e.target.value)}
-                      className="input-field bg-navy-900 border-white/10 hover:border-emerald-500/50"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Gender</label>
-                    <select
-                      value={botPatientGender}
-                      onChange={(e) => setBotPatientGender(e.target.value)}
-                      className="input-field bg-navy-900 border-white/10 hover:border-emerald-500/50 cursor-pointer"
-                    >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Location / City</label>
-                  <input
-                    type="text"
-                    value={botPatientCity}
-                    onChange={(e) => setBotPatientCity(e.target.value)}
-                    className="input-field bg-navy-900 border-white/10 hover:border-emerald-500/50"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Doctor WhatsApp Phone</label>
-                  <input
-                    type="text"
-                    value={botDoctorPhone}
-                    onChange={(e) => setBotDoctorPhone(e.target.value)}
-                    className="input-field bg-navy-900 font-mono border-white/10 hover:border-emerald-500/50"
-                    required
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-2">Patient Symptoms & Clinical Notes</label>
-                  <textarea
-                    rows={4}
-                    value={botSymptoms}
-                    onChange={(e) => setBotSymptoms(e.target.value)}
-                    placeholder="Describe patient symptoms here (e.g. high fever, productive cough, high WBC counts detected)..."
-                    className="input-field bg-navy-900 border-white/10 hover:border-emerald-500/50 text-sm"
-                    required
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-navy-950 font-extrabold text-base hover:scale-[1.01] transition-all flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20"
-              >
-                <span>🤖</span> Compile & Send Triage via WhatsApp
-              </button>
-            </form>
+            <BotModeForm onSubmit={handleBotSubmit} />
           )}
         </div>
       )}
