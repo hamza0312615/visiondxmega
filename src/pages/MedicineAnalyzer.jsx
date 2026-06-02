@@ -6,6 +6,7 @@ import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import WebcamCapture from '../components/WebcamCapture'
 import Skeleton from '../components/Skeleton'
+import { useResetAnalyzer } from '../hooks/useResetAnalyzer'
 
 export default function MedicineAnalyzer() {
   const [imageFile, setImageFile] = useState(null)
@@ -231,14 +232,14 @@ export default function MedicineAnalyzer() {
     }
   }
 
-  const resetAnalyzer = () => {
-    setImageFile(null)
-    setImagePreview('')
-    setSearchQuery('')
-    setPresetData(null)
-    setCurrentResult(null)
-    setError('')
-  }
+  const resetAnalyzer = useResetAnalyzer({
+    setImageFile,
+    setImagePreview,
+    setPresetData,
+    setCurrentResult,
+    setError,
+    customReset: () => setSearchQuery('')
+  })
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12 slide-in">

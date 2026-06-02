@@ -7,6 +7,7 @@ import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import WebcamCapture from '../components/WebcamCapture'
 import Skeleton from '../components/Skeleton'
+import { useResetAnalyzer } from '../hooks/useResetAnalyzer'
 
 export default function SkinAnalyzer() {
   const [imageFile, setImageFile] = useState(null)
@@ -170,15 +171,17 @@ export default function SkinAnalyzer() {
     }
   }
 
-  const resetForm = () => {
-    setImageFile(null)
-    setImagePreview('')
-    setLocation('')
-    setItching('Mild')
-    setPresetData(null)
-    setCurrentResult(null)
-    setError('')
-  }
+  const resetForm = useResetAnalyzer({
+    setImageFile,
+    setImagePreview,
+    setPresetData,
+    setCurrentResult,
+    setError,
+    customReset: () => {
+      setLocation('')
+      setItching('Mild')
+    }
+  })
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12 slide-in">
