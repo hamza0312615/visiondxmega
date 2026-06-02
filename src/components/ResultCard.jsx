@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { formatTime, saveRiskLog, saveHeatmapEntry, getHeatmapOptIn } from '../utils/localStorage'
 import { analyzeText } from '../utils/groqApi'
@@ -257,6 +257,15 @@ Text: "${cleanText}"`
     return <div className="space-y-1">{renderedSections}</div>;
   };
 
+  const formattedDetails = useMemo(() => {
+    if (!details || typeof details !== 'object') return [];
+    return Object.entries(details).map(([key, val]) => ({
+      key,
+      formattedKey: key.replace(/([A-Z])/g, ' $1').trim(),
+      val
+    }));
+  }, [details]);
+
   const confidence = calculateConfidence(rawResponse || summary)
   let confColor = 'bg-emerald-500'
   let confTextColor = 'text-emerald-400'
@@ -389,12 +398,12 @@ Text: "${cleanText}"`
 
       {/* Main AI Response Content */}
       <div className="space-y-6 text-white/80 text-sm leading-relaxed">
-        {details && typeof details === 'object' ? (
+        {formattedDetails.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 my-4">
-            {Object.entries(details).map(([key, val]) => (
+            {formattedDetails.map(({ key, formattedKey, val }) => (
               <div key={key} className="glass-panel p-4 rounded-2xl border border-white/5">
                 <div className="text-xs font-bold text-medical-green uppercase tracking-wider mb-1.5">
-                  {key.replace(/([A-Z])/g, ' $1').trim()}
+                  {formattedKey}
                 </div>
                 <div className="text-white text-sm font-medium">{val}</div>
               </div>
