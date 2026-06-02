@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getHistory, getWhatsAppConfig, formatTime, setDemoMode } from '../utils/localStorage'
+import { getHistory, getWhatsAppConfig, formatTime } from '../utils/localStorage'
 import FeatureCard from '../components/FeatureCard'
 import RiskScore from '../components/RiskScore'
 
