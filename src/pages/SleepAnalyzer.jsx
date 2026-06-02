@@ -5,6 +5,14 @@ import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
 
+export const calculateHours = (bedtime, waketime) => {
+  const [bHour, bMin] = bedtime.split(':').map(Number)
+  const [wHour, wMin] = waketime.split(':').map(Number)
+  let minutes = (wHour * 60 + wMin) - (bHour * 60 + bMin)
+  if (minutes < 0) minutes += 24 * 60 // cross midnight
+  return (minutes / 60).toFixed(1)
+}
+
 export default function SleepAnalyzer() {
   const [activeTab, setActiveTab] = useState('form') // 'form' or 'audio'
 
@@ -56,14 +64,6 @@ export default function SleepAnalyzer() {
     setWeeklyHistory(sleepHistory.slice(0, 7)) // last 7 days
   }
 
-  const calculateHours = () => {
-    const [bHour, bMin] = bedtime.split(':').map(Number)
-    const [wHour, wMin] = waketime.split(':').map(Number)
-    let minutes = (wHour * 60 + wMin) - (bHour * 60 + bMin)
-    if (minutes < 0) minutes += 24 * 60 // cross midnight
-    return (minutes / 60).toFixed(1)
-  }
-
   const handleFormAnalyze = async (e) => {
     if (e) e.preventDefault()
     setLoading(true)
@@ -71,7 +71,7 @@ export default function SleepAnalyzer() {
     setCurrentResult(null)
     setLoadingMsg('Analyzing sleep cycles, apnea risks, and calculating sleep score...')
 
-    const hoursSlept = calculateHours()
+    const hoursSlept = calculateHours(bedtime, waketime)
     const prompt = `You are an expert sleep medicine AI assistant. Analyze this patient's sleep data: Bedtime: ${bedtime}, Wake time: ${waketime}, Hours slept: ${hoursSlept}, Snoring: ${snoring}, Rested feeling: ${rested}/10, Night wakings: ${wakings}, Breathing difficulty: ${breathingDiff}. 
 1) Calculate a composite Sleep Score out of 100 based on sleep duration, awakenings, and rested feeling.
 2) Evaluate sleep quality and identify potential conditions (e.g., Obstructive Sleep Apnea, Insomnia, Sleep fragmentation, Poor sleep hygiene). Note: Sleep apnea is severely undiagnosed in South Asia/Pakistan; flag immediately if gasping/choking or heavy snoring is reported.
