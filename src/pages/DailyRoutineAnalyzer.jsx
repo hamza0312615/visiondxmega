@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { analyzeText } from '../utils/groqApi'
 import { saveResult, isDemoMode, setDemoMode, getDemoData } from '../utils/localStorage'
 import ResultCard from '../components/ResultCard'
-import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
 
 export default function DailyRoutineAnalyzer() {
