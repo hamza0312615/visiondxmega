@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { analyzeText, transcribeAudio } from '../utils/groqApi'
-import { saveResult, getHistoryByType, formatTime, isDemoMode, setDemoMode, getDemoData } from '../utils/localStorage'
+import { saveResult, getHistoryByType, formatTime, isDemoMode, setDemoMode, getDemoData, getApiKey } from '../utils/localStorage'
+import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
@@ -30,8 +31,20 @@ export default function SleepAnalyzer() {
     loadWeeklyHistory()
     
     const runDemo = async () => {
-      if (isDemoMode()) {
-        setDemoMode(false) // Clear global demo mode flag immediately to prevent repeat triggers
+      const isAutopilot = localStorage.getItem('visiondx_autopilot') === 'active' && localStorage.getItem('visiondx_autopilot_step') === 'sleep'
+      const storedTrigger = localStorage.getItem('visiondx_nav_preset_trigger')
+      
+      let preset = false
+      if (storedTrigger) {
+        const parsed = JSON.parse(storedTrigger)
+        if (parsed.page === '/sleep-analyzer') {
+          preset = true
+          localStorage.removeItem('visiondx_nav_preset_trigger')
+        }
+      }
+      
+      if (preset || isDemoMode() || isAutopilot) {
+        if (isDemoMode()) setDemoMode(false)
         const demoData = getDemoData('sleep')
         if (demoData) {
           // Fill form parameters based on demoData
@@ -42,13 +55,22 @@ export default function SleepAnalyzer() {
           setWakings(3)
           setRested(2)
           
-          setTimeout(() => {
-            handleFormAnalyze()
-          }, 1200)
+          if (isAutopilot || preset) {
+            setLoading(true)
+            setTimeout(() => {
+              handleFormAnalyze()
+            }, 1200)
+          }
         }
       }
     }
     runDemo()
+
+    const handleNavTrigger = () => {
+      runDemo()
+    }
+    window.addEventListener('visiondx-preset-triggered', handleNavTrigger)
+    return () => window.removeEventListener('visiondx-preset-triggered', handleNavTrigger)
   }, [])
 
   const loadWeeklyHistory = () => {
@@ -70,6 +92,20 @@ export default function SleepAnalyzer() {
     setError('')
     setCurrentResult(null)
     setLoadingMsg('Analyzing sleep cycles, apnea risks, and calculating sleep score...')
+
+    // Preset simulated fallback mode if API keys are missing
+    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
+    if (!hasKey) {
+      setTimeout(() => {
+        const saved = saveResult('sleep', demoPresets.sleep[0].fallbackResult)
+        setCurrentResult(saved)
+        setLoading(false)
+        if (localStorage.getItem('visiondx_autopilot') === 'active') {
+          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'sleep', result: saved } }))
+        }
+      }, 1500)
+      return
+    }
 
     const hoursSlept = calculateHours()
     const prompt = `You are an expert sleep medicine AI assistant. Analyze this patient's sleep data: Bedtime: ${bedtime}, Wake time: ${waketime}, Hours slept: ${hoursSlept}, Snoring: ${snoring}, Rested feeling: ${rested}/10, Night wakings: ${wakings}, Breathing difficulty: ${breathingDiff}. 
@@ -96,6 +132,20 @@ export default function SleepAnalyzer() {
     setLoading(true)
     setError('')
     setCurrentResult(null)
+
+    // Preset simulated fallback mode if API keys are missing
+    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
+    if (!hasKey) {
+      setTimeout(() => {
+        const saved = saveResult('sleep', demoPresets.sleep[0].fallbackResult)
+        setCurrentResult(saved)
+        setLoading(false)
+        if (localStorage.getItem('visiondx_autopilot') === 'active') {
+          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'sleep', result: saved } }))
+        }
+      }, 1500)
+      return
+    }
 
     try {
       setLoadingMsg('Transcribing sleep sound recording with Whisper AI...')
@@ -148,6 +198,10 @@ export default function SleepAnalyzer() {
     setCurrentResult(saved)
     loadWeeklyHistory()
     setLoading(false)
+
+    if (localStorage.getItem('visiondx_autopilot') === 'active') {
+      window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'sleep', result: saved } }))
+    }
   }
 
   const resetAnalyzer = () => {

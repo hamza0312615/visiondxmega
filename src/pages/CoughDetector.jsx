@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { transcribeAudio, analyzeText } from '../utils/groqApi'
-import { saveResult, isDemoMode, setDemoMode, getDemoData } from '../utils/localStorage'
+import { saveResult, isDemoMode, setDemoMode, getDemoData, getApiKey } from '../utils/localStorage'
+import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
@@ -22,8 +23,20 @@ export default function CoughDetector() {
 
   useEffect(() => {
     const runDemo = async () => {
-      if (isDemoMode()) {
-        setDemoMode(false) // Disable global demo mode immediately to prevent recurrent loops
+      const isAutopilot = localStorage.getItem('visiondx_autopilot') === 'active' && localStorage.getItem('visiondx_autopilot_step') === 'cough'
+      const storedTrigger = localStorage.getItem('visiondx_nav_preset_trigger')
+      
+      let preset = false
+      if (storedTrigger) {
+        const parsed = JSON.parse(storedTrigger)
+        if (parsed.page === '/cough-detector') {
+          preset = true
+          localStorage.removeItem('visiondx_nav_preset_trigger')
+        }
+      }
+      
+      if (preset || isDemoMode() || isAutopilot) {
+        if (isDemoMode()) setDemoMode(false)
         const demoInfo = getDemoData('cough')
         
         const blob = await fetch("data:audio/wav;base64," + demoInfo.base64).then(res => res.blob())
@@ -31,12 +44,21 @@ export default function CoughDetector() {
         setAudioFile(file)
         setAudioFileName(demoInfo.fileName)
         
-        setTimeout(() => {
-          processAudio(file)
-        }, 1200)
+        if (isAutopilot || preset) {
+          setLoading(true)
+          setTimeout(() => {
+            processAudio(file)
+          }, 1200)
+        }
       }
     }
     runDemo()
+
+    const handleNavTrigger = () => {
+      runDemo()
+    }
+    window.addEventListener('visiondx-preset-triggered', handleNavTrigger)
+    return () => window.removeEventListener('visiondx-preset-triggered', handleNavTrigger)
   }, [])
 
   const startRecording = async () => {
@@ -107,6 +129,20 @@ export default function CoughDetector() {
     setError('')
     setCurrentResult(null)
 
+    // Preset simulated fallback mode if API keys are missing
+    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
+    if (blobOrFile && !hasKey) {
+      setTimeout(() => {
+        const saved = saveResult('cough', demoPresets.cough[0].fallbackResult)
+        setCurrentResult(saved)
+        setLoading(false)
+        if (localStorage.getItem('visiondx_autopilot') === 'active') {
+          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'cough', result: saved } }))
+        }
+      }, 1500)
+      return
+    }
+
     try {
       setLoadingMsg('Transcribing cough sound with Whisper Large v3...')
       const transcription = await transcribeAudio(blobOrFile)
@@ -142,6 +178,10 @@ export default function CoughDetector() {
 
       const saved = saveResult('cough', resultData)
       setCurrentResult(saved)
+
+      if (localStorage.getItem('visiondx_autopilot') === 'active') {
+        window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'cough', result: saved } }))
+      }
 
     } catch (err) {
       setError(err.message || 'Failed to process audio. Please ensure your API key is valid and supports Whisper API.')

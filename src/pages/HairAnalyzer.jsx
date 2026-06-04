@@ -19,22 +19,46 @@ export default function HairAnalyzer() {
 
   useEffect(() => {
     const runDemo = async () => {
-      if (isDemoMode()) {
-        setDemoMode(false) // Disable global demo mode immediately to prevent recurrent loops
-        const preset = demoPresets.hair[0]
+      const isAutopilot = localStorage.getItem('visiondx_autopilot') === 'active' && localStorage.getItem('visiondx_autopilot_step') === 'hair'
+      const storedTrigger = localStorage.getItem('visiondx_nav_preset_trigger')
+      
+      let preset = null
+      if (storedTrigger) {
+        const parsed = JSON.parse(storedTrigger)
+        if (parsed.page === '/hair-analyzer') {
+          preset = demoPresets.hair.find(p => p.id === parsed.presetId)
+          localStorage.removeItem('visiondx_nav_preset_trigger')
+        }
+      }
+      
+      if (!preset && (isDemoMode() || isAutopilot)) {
+        if (isDemoMode()) setDemoMode(false)
+        preset = demoPresets.hair[0]
+      }
+      
+      if (preset) {
         const blob = await fetch(preset.image).then(res => res.blob())
-        const file = new File([blob], preset.fileName, { type: "image/png" })
+        const file = new File([blob], preset.fileName, { type: preset.fileName.endsWith('.jpg') ? "image/jpeg" : "image/png" })
         setImageFile(file)
         setImagePreview(preset.image)
-        setSymptoms(preset.symptoms)
+        setSymptoms(preset.symptoms || '')
         setPresetData(preset)
         
-        setTimeout(() => {
-          handleAnalyze(null, file, preset)
-        }, 1200)
+        if (isAutopilot) {
+          setLoading(true)
+          setTimeout(() => {
+            handleAnalyze(null, file, preset)
+          }, 1200)
+        }
       }
     }
     runDemo()
+
+    const handleNavTrigger = () => {
+      runDemo()
+    }
+    window.addEventListener('visiondx-preset-triggered', handleNavTrigger)
+    return () => window.removeEventListener('visiondx-preset-triggered', handleNavTrigger)
   }, [])
 
   const handleImageChange = (file) => {
@@ -80,6 +104,10 @@ export default function HairAnalyzer() {
         const saved = saveResult('hair', activePreset.fallbackResult)
         setCurrentResult(saved)
         setLoading(false)
+        
+        if (localStorage.getItem('visiondx_autopilot') === 'active') {
+          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'hair', result: saved } }))
+        }
       }, 1500)
       return
     }
@@ -130,6 +158,10 @@ export default function HairAnalyzer() {
 
       const saved = saveResult('hair', resultData)
       setCurrentResult(saved)
+
+      if (localStorage.getItem('visiondx_autopilot') === 'active') {
+        window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'hair', result: saved } }))
+      }
     } catch (err) {
       setError(err.message || 'Failed to analyze hair image. Please check your API key or try again.')
     } finally {

@@ -134,6 +134,14 @@ export function setSiteLanguage(lang) {
     // Delete the cookie
     document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
     document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + window.location.hostname;
+    
+    // Explicitly delete wildcard subdomain cookies as well
+    const hostParts = window.location.hostname.split('.');
+    if (hostParts.length > 2) {
+      const domain = hostParts.slice(-2).join('.');
+      document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=." + domain;
+      document.cookie = "googtrans=/en/en; path=/; domain=." + domain;
+    }
   }
   
   window.dispatchEvent(new Event('siteLangChange'))

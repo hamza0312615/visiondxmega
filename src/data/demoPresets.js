@@ -23,8 +23,16 @@ const svgTemplates = {
   wound_laceration: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%"><rect width="100%" height="100%" fill="%23020810" rx="20"/><rect x="50" y="50" width="300" height="200" rx="15" fill="%23ffedd5" opacity="0.95"/><path d="M100,160 Q150,130 200,155 Q250,180 300,150" fill="none" stroke="%23fda4af" stroke-width="8" stroke-linecap="round"/><path d="M100,160 Q150,130 200,155 Q250,180 300,150" fill="none" stroke="%23f43f5e" stroke-width="3" stroke-linecap="round"/><text x="200" y="235" fill="%239f1239" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle">HEALING LACERATION INFLAMMATORY STAGE</text></svg>`,
 
   med_blurry: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%"><rect width="100%" height="100%" fill="%23020810" rx="20"/><rect x="80" y="60" width="240" height="150" rx="10" fill="%23fee2e2" stroke="%23f43f5e" stroke-width="3" filter="blur(1.5px)"/><text x="200" y="120" fill="%239f1239" font-family="system-ui, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" filter="blur(2px)">UNLABELLED PILLS</text><text x="200" y="250" fill="%23f43f5e" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle">SUSPICIOUS PACKAGING WARNING</text></svg>`,
+ 
+  lab_lipid: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%"><rect width="100%" height="100%" fill="%23020810" rx="20"/><rect x="60" y="40" width="280" height="200" rx="10" fill="%23f8fafc" stroke="%233b82f6" stroke-width="2"/><text x="80" y="75" fill="%230f172a" font-family="system-ui, sans-serif" font-size="12" font-weight="bold">LIPID SCORECARD PANEL</text><line x1="80" y1="90" x2="320" y2="90" stroke="%23e2e8f0" stroke-width="1.5"/><text x="80" y="115" fill="%23475569" font-family="monospace" font-size="10">Total Cholesterol: 260 mg/dL [HIGH]</text><text x="80" y="135" fill="%23475569" font-family="monospace" font-size="10">LDL (Bad): 185 mg/dL         [HIGH]</text><text x="80" y="135" fill="%23475569" font-family="monospace" font-size="10">HDL (Good): 35 mg/dL          [LOW]</text><text x="80" y="175" fill="%23475569" font-family="monospace" font-size="10">Triglycerides: 210 mg/dL     [HIGH]</text><line x1="80" y1="195" x2="320" y2="195" stroke="%23e2e8f0" stroke-width="1.5"/><text x="200" y="270" fill="%233b82f6" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle">CARDIOVASCULAR LIPID WARNING SHOWN</text></svg>`,
 
-  lab_lipid: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%"><rect width="100%" height="100%" fill="%23020810" rx="20"/><rect x="60" y="40" width="280" height="200" rx="10" fill="%23f8fafc" stroke="%233b82f6" stroke-width="2"/><text x="80" y="75" fill="%230f172a" font-family="system-ui, sans-serif" font-size="12" font-weight="bold">LIPID SCORECARD PANEL</text><line x1="80" y1="90" x2="320" y2="90" stroke="%23e2e8f0" stroke-width="1.5"/><text x="80" y="115" fill="%23475569" font-family="monospace" font-size="10">Total Cholesterol: 260 mg/dL [HIGH]</text><text x="80" y="135" fill="%23475569" font-family="monospace" font-size="10">LDL (Bad): 185 mg/dL         [HIGH]</text><text x="80" y="135" fill="%23475569" font-family="monospace" font-size="10">HDL (Good): 35 mg/dL          [LOW]</text><text x="80" y="175" fill="%23475569" font-family="monospace" font-size="10">Triglycerides: 210 mg/dL     [HIGH]</text><line x1="80" y1="195" x2="320" y2="195" stroke="%23e2e8f0" stroke-width="1.5"/><text x="200" y="270" fill="%233b82f6" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle">CARDIOVASCULAR LIPID WARNING SHOWN</text></svg>`
+  cough_acoustic: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%"><rect width="100%" height="100%" fill="%23020810" rx="20"/><circle cx="200" cy="130" r="45" fill="%233b82f6" opacity="0.1" stroke="%233b82f6" stroke-width="2"/><path d="M160,130 L170,110 L180,150 L190,90 L200,170 L210,100 L220,160 L230,120 L240,140" fill="none" stroke="%233b82f6" stroke-width="4" stroke-linecap="round"/><text x="200" y="240" fill="%2360a5fa" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle">PERTUSSIS / COUGH ACOUSTIC WAVEFORM</text></svg>`,
+
+  sleep_apnea: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%"><rect width="100%" height="100%" fill="%23020810" rx="20"/><path d="M140,110 Q160,90 190,110 Q210,120 230,100 M140,130 Q165,150 215,130" fill="none" stroke="%23a855f7" stroke-width="4" stroke-linecap="round"/><path d="M250,90 Q260,80 270,90 M270,75 Q278,68 285,75 M285,62 Q290,56 295,62" fill="none" stroke="%23c084fc" stroke-width="2.5" stroke-linecap="round"/><text x="200" y="240" fill="%23c084fc" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle">OBSTRUCTIVE SLEEP APNEA (OSA) ACTIVE RISK</text></svg>`,
+
+  routine_habits: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%"><rect width="100%" height="100%" fill="%23020810" rx="20"/><circle cx="200" cy="130" r="52" fill="none" stroke="%23a855f7" stroke-width="4" stroke-dasharray="4 2"/><circle cx="200" cy="130" r="44" fill="%23a855f7" opacity="0.15"/><text x="200" y="136" fill="%23c084fc" font-family="system-ui, sans-serif" font-size="20" font-weight="black" text-anchor="middle">50%</text><text x="200" y="240" fill="%23c084fc" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle">MODERATE WELLNESS LIFESTYLE ALIGNMENT</text></svg>`,
+
+  voicedoc_triage: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%"><rect width="100%" height="100%" fill="%23020810" rx="20"/><rect x="120" y="80" width="160" height="100" rx="15" fill="%2310b981" opacity="0.1" stroke="%2310b981" stroke-width="2"/><circle cx="200" cy="120" r="16" fill="%2310b981" opacity="0.8"/><circle cx="200" cy="120" r="8" fill="%23020810"/><path d="M170,160 Q200,180 230,160" fill="none" stroke="%2310b981" stroke-width="3" stroke-linecap="round"/><text x="200" y="240" fill="%2334d399" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" text-anchor="middle">VOICEDOC BILINGUAL AI CHATBOT TRIAGE</text></svg>`
 }
 
 export const demoPresets = {
@@ -564,6 +572,143 @@ SEE_DOCTOR`,
           primaryBiomarker: 'LDL: 185 mg/dL',
           clinicalCorrelation: 'Increased risk of arterial plaque buildup (atherosclerosis).'
         }
+      }
+    }
+  ],
+  cough: [
+    {
+      id: 'cough-1',
+      title: 'Acoustic Whooping Cough',
+      description: 'Severe paroxysmal barking cough with distinct inspiratory whoop sound.',
+      image: svgTemplates.cough_acoustic,
+      fileName: 'preset_whooping_cough.wav',
+      fallbackResult: {
+        rawResponse: `**ACOUSTIC RESPIRATORY AI OBSERVATIONS**
+
+Acoustic wave analysis reveals patterns highly characteristic of **Bordetella pertussis (Whooping Cough)**.
+
+**Diagnostic Indicators:**
+- **Acoustic Signature:** High-pitched inspiratory 'whoop' following paroxysmal cough bursts.
+- **Duration/Intensity:** Severe spasm intervals.
+- **Regional Protocol:** Positive pertussis check. Urgent clinical isolation advised.
+
+**Urgency & Care Guidelines:**
+- **Urgency Level: SEE_DOCTOR**
+- Avoid exposure to smoke, cold air, or dry environments.
+- Practice steam inhalation 3 times daily to soothe bronchial passages.
+- Maintain high hydration levels.
+
+**Suggested Pharmacotherapy Considerations:**
+- **Antibiotic Coverage**: Macrolides (e.g. Azithromycin) under direct medical guidance.
+- **Bronchodilators**: Salbutamol inhaler if bronchial spasms occur.`,
+        details: {
+          audioTranscription: 'Severe barking cough followed by deep gasping whoop sound.',
+          classifiedCoughType: 'Whooping Cough / Pertussis',
+          assessedUrgency: 'SEE DOCTOR',
+          regionalScreening: 'Pertussis protocol checked. High infectivity risk.'
+        }
+      }
+    }
+  ],
+  sleep: [
+    {
+      id: 'sleep-1',
+      title: 'Obstructive Sleep Apnea (OSA)',
+      description: 'Loud chronic snoring with frequent nocturnal awakenings and gasping episodes.',
+      image: svgTemplates.sleep_apnea,
+      fileName: 'preset_sleep_apnea.wav',
+      fallbackResult: {
+        rawResponse: `**AI SLEEP MEDICINE CLINICAL ASSESSMENT**
+
+Evaluation of sleep parameters and reported symptoms indicates a high probability of **Severe Obstructive Sleep Apnea (OSA)** with fragmented sleep architecture.
+
+**Key Metrics & Risks:**
+- **Sleep Quality:** Severe oxygen desaturation risk.
+- **Habits Profile:** Snoring with choking episodes.
+- **Apnea Index:** High risk estimated.
+
+**Urgency & Action Plan:**
+- **Urgency Level: SEE_DOCTOR**
+- Schedule a comprehensive polysomnography (overnight sleep study) at a sleep clinic.
+- Maintain strict lateral sleeping positions (avoid sleeping on your back).
+- Avoid alcohol or sedative medications prior to bedtime, as they relax airway muscles.
+
+**Suggested Interventions:**
+- **CPAP Therapy**: Continuous Positive Airway Pressure consultation.
+- **Mandibular Advancement Device**: Oral appliance for airway patency.`,
+        details: {
+          sleepScoreCalculated: '42 / 100',
+          qualityRating: 'High Apnea Risk',
+          assessedUrgency: 'SEE DOCTOR',
+          regionalScreening: 'Obstructive Sleep Apnea (OSA) screening positive'
+        }
+      }
+    }
+  ],
+  routine: [
+    {
+      id: 'routine-1',
+      title: 'Circadian Fatigue Routine',
+      description: 'Sedentary routine with low sleep hours and elevated daily stress.',
+      image: svgTemplates.routine_habits,
+      fileName: 'preset_circadian_fatigue.png',
+      fallbackResult: {
+        rawResponse: `**CLINICAL LIFESTYLE MEDICINE REPORT**
+
+Habit analysis indicates severe circadian desynchrony and high risk of **Chronic Fatigue Syndrome** secondary to lifestyle deficits.
+
+**Habit Deficits:**
+- **Sleep Duration:** 5 hours (Critical Deficit).
+- **Cortisol/Stress:** High constant stress.
+- **Activity Level:** Sedentary screen time of 9 hours.
+
+**Urgency & Action Plan:**
+- **Urgency Level: NORMAL**
+- Restructure daily schedule to prioritize 7.5 hours of uninterrupted sleep.
+- Implement the "20-20-20" rule: every 20 minutes, look at something 20 feet away for 20 seconds.
+- Incorporate 20 minutes of light aerobic exercise (e.g. brisk walking) daily.
+
+**Suggested Wellness Schedule:**
+- **07:30 AM**: Sun exposure & hydration.
+- **01:00 PM**: Active stretching break.
+- **10:00 PM**: Screen power-down & winding-down routine.`,
+        details: {
+          patientName: 'Abdullah',
+          wellnessScore: '50/100',
+          primaryDeficit: 'Critical Sleep & Screen-Overload Deficit',
+          sleepAssessment: '5.0 Hours per day',
+          hydrationStatus: '3.0 Liters per day',
+          activityLevel: '10 Minutes per day'
+        }
+      }
+    }
+  ],
+  voicedoc: [
+    {
+      id: 'voicedoc-1',
+      title: 'High Fever Triage',
+      description: 'Voice doc triage request for high fever and severe dry cough.',
+      image: svgTemplates.voicedoc_triage,
+      fileName: 'preset_voicedoc_triage.wav',
+      fallbackResult: {
+        rawResponse: `**VOICEDOC CLINICAL TRIAGE ASSESSMENT**
+
+Aap ki report ke mutabik high fever aur khansi (cough) ke symptoms hain. Yeh acute bronchial viral or bacterial infection ho sakta hai.
+
+**Immediate Precautions (Gharailu Hifazati Tadabeer):**
+- Strictly **rest karein** aur physical kaam se parhez karein.
+- Har 4 ghantay baad **body temperature check karein**. Agar bukhar 101F se zyada ho to dabao kam karne ke liye geele kapray se jism ko saaf karein (cold sponging).
+- Khoob saara **paani aur neem-garam liquids** (jaise ke kehwa) piyein taake dehyration na ho.
+- Neem-garam paani se **bhaap (steam inhalation)** lein taake saans ki nali saaf ho.
+
+**Urgency Level: SEE_DOCTOR**`,
+        details: {
+          spokenTranscription: 'Mujhe bukhar aur boht khansi hai.',
+          responseLanguage: 'Roman Urdu / رومن اردو',
+          assessedUrgency: 'SEE DOCTOR',
+          ruralTriageNote: 'Bilingual voice doc triage completed. Instant WhatsApp doctor referral available below.'
+        },
+        speechText: 'Aap ki report ke mutabik high fever aur khansi ke symptoms hain. Bukhar aur dehyration se bachne ke liye rest karein, bhaap lein, aur neem-garam pani piyein. Fauri behtari na hone par doctor se consult karein.'
       }
     }
   ]

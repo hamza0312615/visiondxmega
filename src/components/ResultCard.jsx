@@ -2,7 +2,90 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { formatTime, saveRiskLog, saveHeatmapEntry, getHeatmapOptIn } from '../utils/localStorage'
 import { analyzeText } from '../utils/groqApi'
+import { translateText } from '../utils/translationService'
 import { usePrintReport } from '../hooks/usePrintReport'
+
+const getLocalTranslation = (type, langCode, text, details) => {
+  const isUr = langCode === 'ur-PK'
+  const isRoman = langCode === 'ur-roman'
+  const isHi = langCode === 'hi-IN'
+  const isAr = langCode === 'ar-SA'
+  const isBn = langCode === 'bn-BD'
+  const isPa = langCode === 'pa-IN'
+
+  const upperText = text.toUpperCase()
+  let urgency = 'NORMAL'
+  if (upperText.includes('EMERGENCY') || upperText.includes('HIGH') || upperText.includes('DANGEROUS') || upperText.includes('SEVERE')) {
+    urgency = 'EMERGENCY'
+  } else if (upperText.includes('SEE_DOCTOR') || upperText.includes('MEDIUM') || upperText.includes('MODERATE')) {
+    urgency = 'SEE_DOCTOR'
+  }
+
+  const rawCondition = details?.detectedCondition || details?.classifiedCoughType || details?.reportCategory || details?.statusObservation || type || 'Observation'
+  const condition = rawCondition.replace(/Analysis|Report|Diagnostic|Prediction/gi, '').trim()
+
+  if (isUr) {
+    if (urgency === 'EMERGENCY') {
+      return `اہم طبی انتباہ۔ ایمرجنسی صورتحال ہے۔ آپ کی ${condition} رپورٹ کے مطابق فوری علاج کی ضرورت ہے۔ براہ کرم فوری ڈاکٹر یا قریبی ایمرجنسی سے رجوع کریں۔`
+    } else if (urgency === 'SEE_DOCTOR') {
+      return `طبی مشورہ۔ آپ کو ڈاکٹر سے مشورہ کرنا چاہیے۔ آپ کی ${condition} رپورٹ میں کچھ احتیاطی علامات ہیں۔ جلد ڈاکٹر سے ملیں۔`
+    } else {
+      return `آپ کی ${condition} رپورٹ بالکل نارمل ہے۔ گھبرانے کی کوئی ضرورت نہیں ہے۔ صحت مند طرزِ زندگی جاری رکھیں۔`
+    }
+  }
+
+  if (isRoman) {
+    if (urgency === 'EMERGENCY') {
+      return `Ahem tibbi intibah. Emergency soorat-e-haal hai. Aap ki ${condition} report ke mutabik fori elaj ki zaroorat hai. Bara-e-maherbani fori doctor ya qareebi emergency se ruju karein.`
+    } else if (urgency === 'SEE_DOCTOR') {
+      return `Tibbi mashwara. Aap ko doctor se mashwara karna chahiye. Aap ki ${condition} report me kuch ehtiyati nishaniyan hain. Jald doctor se milein.`
+    } else {
+      return `Aap ki ${condition} report bilkul normal hai. Ghabranay ki koi zaroorat nahi hai. Sehat-mand lifestyle jari rakhein.`
+    }
+  }
+
+  if (isHi) {
+    if (urgency === 'EMERGENCY') {
+      return `महत्वपूर्ण चिकित्सा चेतावनी। आपातकालीन स्थिति है। आपकी ${condition} रिपोर्ट के अनुसार तत्काल उपचार की आवश्यकता है। कृपया तुरंत डॉक्टर या आपातकालीन विभाग से संपर्क करें।`
+    } else if (urgency === 'SEE_DOCTOR') {
+      return `चिकित्सा परामर्श। आपको डॉक्टर से परामर्श करना चाहिए। आपकी ${condition} रिपोर्ट में कुछ असामान्य लक्षण हैं। जल्द ही डॉक्टर से मिलें।`
+    } else {
+      return `आपकी ${condition} रिपोर्ट सामान्य है। चिंता की कोई बात नहीं है। स्वस्थ दिनचर्या का पालन करें।`
+    }
+  }
+
+  if (isAr) {
+    if (urgency === 'EMERGENCY') {
+      return `تحذير طبي مهم. حالة طوارئ. يحتاج تقرير ${condition} الخاص بك إلى علاج فوري. يرجى مراجعة الطبيب أو قسم الطوارئ فوراً.`
+    } else if (urgency === 'SEE_DOCTOR') {
+      return `استشارة طبية. يجب عليك استشارة الطبيب. تقرير ${condition} يحتوي على بعض العلامات غير الطبيعية. راجع طبيبك قريباً.`
+    } else {
+      return `تقرير ${condition} الخاص بك طبيعي تماماً. لا داعي للقلق. استمر في نمط حياتك الصحي.`
+    }
+  }
+
+  if (isBn) {
+    if (urgency === 'EMERGENCY') {
+      return `গুরুত্বপূর্ণ চিকিৎসা সতর্কতা। এটি একটি জরুরি অবস্থা। আপনার ${condition} রিপোর্ট অনুযায়ী অবিলম্বে চিকিৎসার প্রয়োজন। দয়া করে দ্রুত ডাক্তার বা জরুরি বিভাগে যান।`
+    } else if (urgency === 'SEE_DOCTOR') {
+      return `চিকিৎসা পরামর্শ। আপনার ডাক্তারের সাথে পরামর্শ করা উচিত। আপনার ${condition} রিপোর্টে কিছু অস্বাভাবিক লক্ষণ রয়েছে। দ্রুত ডাক্তারের কাছে যান।`
+    } else {
+      return `আপনার ${condition} রিপোর্ট সম্পূর্ণ স্বাভাবিক। ভয়ের কিছু নেই। স্বাস্থ্যকর জীবনযাপন করুন।`
+    }
+  }
+
+  if (isPa) {
+    if (urgency === 'EMERGENCY') {
+      return `ਖਾਸ ਡਾਕਟਰੀ ਚੇਤਾਵਨੀ। ਐਮਰਜੈਂਸੀ ਹੈ। ਤੁਹਾਡੀ ${condition} ਰਿਪੋਰਟ ਮੁਤਾਬਕ ਤੁਰੰਤ ਇਲਾਜ ਦੀ ਲੋੜ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਤੁਰੰਤ ਹਸਪਤਾਲ ਜਾਓ।`
+    } else if (urgency === 'SEE_DOCTOR') {
+      return `ਡਾਕਟਰੀ ਸਲਾਹ। ਤੁਹਾਨੂੰ ਡਾਕਟਰ ਨਾਲ ਸਲਾਹ ਕਰਨੀ ਚਾਹੀਦੀ ਹੈ। ਤੁਹਾਡੀ ${condition} ਰਿਪੋਰਟ ਵਿੱਚ ਕੁਝ ਗੈਰ-ਮਾਮੂਲੀ ਲੱਛਣ ਹਨ।`
+    } else {
+      return `ਤੁਹਾਡੀ ${condition} ਰਿਪੋਰਟ ਬਿਲਕੁਲ ਨਾਰਮਲ ਹੈ। ਫਿਕਰ ਦੀ ਕੋਈ ਲੋੜ ਨਹੀਂ ਹੈ।`
+    }
+  }
+
+  return text
+}
 
 export default function ResultCard({ data, onDelete, isHistory = false }) {
   const [copied, setCopied] = useState(false)
@@ -10,9 +93,16 @@ export default function ResultCard({ data, onDelete, isHistory = false }) {
   const [speechLang, setSpeechLang] = useState('ur-PK')
   const [translatedTexts, setTranslatedTexts] = useState({})
   const [translating, setTranslating] = useState(false)
+  const [voiceAlert, setVoiceAlert] = useState('')
   const { printReport } = usePrintReport()
 
   useEffect(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
     return () => {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel()
@@ -150,60 +240,99 @@ export default function ResultCard({ data, onDelete, isHistory = false }) {
     }
 
     if (speechLang !== 'en-US') {
-      if (translatedTexts[speechLang]) {
-        speakWithVoice(translatedTexts[speechLang], speechLang)
+      const voices = window.speechSynthesis.getVoices()
+      const hasVoice = (langKey) => !!voices.find(v => v.lang.toLowerCase().includes(langKey.toLowerCase()) || v.name.toLowerCase().includes(langKey.toLowerCase()))
+
+      const isUrdu = speechLang === 'ur-PK'
+      const isHindi = speechLang === 'hi-IN'
+      const isArabic = speechLang === 'ar-SA'
+      const isBengali = speechLang === 'bn-BD'
+      const isPunjabi = speechLang === 'pa-IN'
+
+      const voiceMissing = (isUrdu && !hasVoice('ur')) ||
+                           (isHindi && !hasVoice('hi')) ||
+                           (isArabic && !hasVoice('ar')) ||
+                           (isBengali && !hasVoice('bn')) ||
+                           (isPunjabi && !hasVoice('pa'))
+
+      // If the native speech voice is missing, dynamically speak and translate into Roman Urdu
+      let targetLang = speechLang
+      if (voiceMissing && speechLang !== 'ur-roman') {
+        targetLang = 'ur-roman'
+        const languageNames = {
+          'ur-PK': 'Urdu',
+          'hi-IN': 'Hindi',
+          'pa-IN': 'Punjabi',
+          'ar-SA': 'Arabic',
+          'bn-BD': 'Bengali'
+        }
+        const missingLang = languageNames[speechLang] || speechLang
+        setVoiceAlert(`Note: Native system voice for ${missingLang} was not found on your device. Speech is falling back to phonetic Roman Urdu.`)
+      } else {
+        setVoiceAlert('')
+      }
+
+      if (translatedTexts[targetLang]) {
+        speakWithVoice(translatedTexts[targetLang], targetLang)
       } else {
         setTranslating(true)
+        let targetLangCode = targetLang
         try {
-          const voices = window.speechSynthesis.getVoices()
-          const hasUrduVoice = !!voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu'))
-
           let prompt = ''
-          let targetLangCode = speechLang
+          let translated = null
 
-          if (speechLang === 'ur-roman' || (speechLang === 'ur-PK' && !hasUrduVoice)) {
-            // Fallback to Roman Urdu because native Urdu voice is missing!
+          if (targetLang === 'ur-roman') {
+            // Fallback translation to Roman Urdu because native voice is missing!
             targetLangCode = 'ur-roman'
             prompt = `You are a professional medical translator. Translate the following clinical report into highly conversational, friendly, and clear Roman Urdu (Urdu language written in standard English/Latin letters, e.g., "Aap ki skin report ke mutabik sab theek hai. Kisi fikar ki baat nahi hai"). Use simple everyday phrases. Keep it natural, easy to read aloud, and extremely concise. Only return the Roman Urdu transliterated text, without any intro or explanations.
             
 Text: "${cleanText}"`
+            translated = await analyzeText(prompt)
           } else {
-            // Standard translation
-            const languageNames = {
-              'ur-PK': 'Urdu (اردو)',
-              'hi-IN': 'Hindi (हिंदी)',
-              'pa-IN': 'Punjabi (ਪੰਜਾਬੀ)',
-              'ar-SA': 'Arabic (العربية)',
-              'bn-BD': 'Bengali (বাংলা)'
-            }
-            const targetLang = languageNames[speechLang] || 'Urdu'
-            
-            if (speechLang === 'ur-PK') {
-              prompt = `You are a professional medical translator. Translate this clinical report into extremely clear, polite, and simple conversational Urdu (اردو) script. Use standard everyday Urdu words that are very easy to understand and speak aloud. Avoid difficult or archaic Persian/Arabic medical vocabulary (for example, use 'bukhār' instead of 'tap-e-shuda', 'jild' instead of 'poast', 'āṅkh' instead of 'chashm'). Keep it concise. Only return the translated Urdu script, without any intro or explanations.
-              
+            // Attempt free, fast, keyless translation first (MyMemory/LibreTranslate)
+            translated = await translateText(cleanText, targetLang)
+
+            // If MyMemory/LibreTranslate fails, use GenAI text translation fallback
+            if (!translated) {
+              const languageNames = {
+                'ur-PK': 'Urdu (اردو)',
+                'hi-IN': 'Hindi (हिंदी)',
+                'pa-IN': 'Punjabi (ਪੰਜਾਬੀ)',
+                'ar-SA': 'Arabic (العربية)',
+                'bn-BD': 'Bengali (বাংলা)'
+              }
+              const targetLangName = languageNames[targetLang] || 'Urdu'
+
+              if (targetLang === 'ur-PK') {
+                prompt = `You are a professional medical translator. Translate this clinical report into extremely clear, polite, and simple conversational Urdu (اردو) script. Use standard everyday Urdu words that are very easy to understand and speak aloud. Avoid difficult or archaic Persian/Arabic medical vocabulary (for example, use 'bukhār' instead of 'tap-e-shuda', 'jild' instead of 'poast', 'āṅkh' instead of 'chashm'). Keep it concise. Only return the translated Urdu script, without any intro or explanations.
+                
 Text: "${cleanText}"`
-            } else {
-              prompt = `Translate the following medical assessment/report text into clear, simple, conversational ${targetLang} suitable for speech synthesis (text-to-speech). Maintain the professional medical advice but make it very natural when spoken aloud. Only return the translated text without any introduction, explanations, or metadata. Keep it concise.
-              
+              } else {
+                prompt = `Translate the following medical assessment/report text into clear, simple, conversational ${targetLangName} suitable for speech synthesis (text-to-speech). Maintain the professional medical advice but make it very natural when spoken aloud. Only return the translated text without any introduction, explanations, or metadata. Keep it concise.
+                
 Text: "${cleanText}"`
+              }
+              translated = await analyzeText(prompt)
             }
           }
 
-          const translated = await analyzeText(prompt)
           if (translated) {
-            setTranslatedTexts(prev => ({ ...prev, [speechLang]: translated }))
+            setTranslatedTexts(prev => ({ ...prev, [targetLang]: translated }))
             speakWithVoice(translated, targetLangCode)
           } else {
-            speakWithVoice(cleanText, speechLang)
+            const fallbackLocal = getLocalTranslation(type, targetLangCode, cleanText, details)
+            speakWithVoice(fallbackLocal, targetLangCode)
           }
         } catch (err) {
-          console.error('Translation for speech synthesis failed:', err)
-          speakWithVoice(cleanText, speechLang)
+          console.error('Translation for speech synthesis failed, using local fallback:', err)
+          const fallbackLocal = getLocalTranslation(type, targetLangCode, cleanText, details)
+          speakWithVoice(fallbackLocal, targetLangCode)
         } finally {
           setTranslating(false)
         }
       }
     } else {
+      setVoiceAlert('')
       speakWithVoice(cleanText, 'en-US')
     }
   }
@@ -385,6 +514,12 @@ Text: "${cleanText}"`
             <option value="bn-BD">🇧🇩 Bengali (বাংলা)</option>
           </select>
         </div>
+
+        {voiceAlert && (
+          <div className="w-full mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold flex items-center gap-2">
+            <span>⚠️</span> {voiceAlert}
+          </div>
+        )}
       </div>
 
       {/* Main AI Response Content */}

@@ -17,6 +17,7 @@ import LabReportAnalyzer from './pages/LabReportAnalyzer'
 import HairAnalyzer from './pages/HairAnalyzer'
 import DailyRoutineAnalyzer from './pages/DailyRoutineAnalyzer'
 import VoiceDoc from './pages/VoiceDoc'
+import SignTranslator from './pages/SignTranslator'
 import OfflineAgent from './pages/OfflineAgent'
 import History from './pages/History'
 import Settings from './pages/Settings'
@@ -76,6 +77,7 @@ export default function App() {
             <Route path="/eye-predictor" element={<EyePredictor />} />
             <Route path="/skin-analyzer" element={<SkinAnalyzer />} />
             <Route path="/wound-tracker" element={<WoundTracker />} />
+            <Route path="/sign-translator" element={<SignTranslator />} />
             <Route path="/cough-detector" element={<CoughDetector />} />
             <Route path="/sleep-analyzer" element={<SleepAnalyzer />} />
             <Route path="/medicine-analyzer" element={<MedicineAnalyzer />} />

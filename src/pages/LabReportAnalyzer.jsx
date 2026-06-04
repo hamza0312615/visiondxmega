@@ -180,6 +180,10 @@ export default function LabReportAnalyzer() {
         const saved = saveResult('lab', activePreset.fallbackResult)
         setCurrentResult(saved)
         setLoading(false)
+        
+        if (localStorage.getItem('visiondx_autopilot') === 'active') {
+          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'lab', result: saved } }))
+        }
       }, 1500)
       return
     }
@@ -250,6 +254,10 @@ Patient Profile context: Name: ${profile.name}, Age: ${profile.age}, Gender: ${p
 
       const saved = saveResult('lab', resultData)
       setCurrentResult(saved)
+
+      if (localStorage.getItem('visiondx_autopilot') === 'active') {
+        window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'lab', result: saved } }))
+      }
 
     } catch (err) {
       setError(err.message || 'Failed to analyze lab report. Please check your API key or try again.')

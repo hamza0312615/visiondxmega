@@ -4,7 +4,12 @@ import { useNavigate, useLocation } from 'react-router-dom'
 const STEPS = [
   { id: 'eye', name: '👁️ Eye Disease Predictor', path: '/eye-predictor' },
   { id: 'skin', name: '🔴 Skin Rash Analyzer', path: '/skin-analyzer' },
+  { id: 'wound', name: '🩹 Wound Healing Tracker', path: '/wound-tracker' },
+  { id: 'cough', name: '🎤 Cough Sound AI', path: '/cough-detector' },
+  { id: 'sleep', name: '😴 Sleep Quality AI', path: '/sleep-analyzer' },
   { id: 'medicine', name: '💊 Medicine Verifier', path: '/medicine-analyzer' },
+  { id: 'lab', name: '📄 Lab Report Analyzer', path: '/lab-analyzer' },
+  { id: 'hair', name: '💇 Hair Disease AI', path: '/hair-analyzer' },
   { id: 'routine', name: '📅 Daily Routine Analyzer', path: '/routine-analyzer' },
   { id: 'voicedoc', name: '🩺 VoiceDoc Triage AI', path: '/voicedoc' }
 ]
@@ -12,23 +17,53 @@ const STEPS = [
 const NARRATIVES = {
   eye: {
     en: "Analyzing eye image. Conjunctivitis risk identified. Sclera shows active vascular congestion and teary discharge. Recommended: Avoid rubbing the eye, practice strict hand hygiene, and consult an eye specialist.",
-    ur: "آنکھ کا معائنہ مکمل۔ آشوبِ چشم کا خطرہ پایا گیا ہے۔ براہِ مہربانی آنکھ کو ملنے سے گریز کریں، ہاتھوں کو صاف رکھیں اور ڈاکٹر سے رجوع کریں۔"
+    ur: "آنکھ کا معائنہ مکمل۔ آشوبِ چشم کا خطرہ پایا گیا ہے۔ براہِ مہربانی آنکھ کو ملنے سے گریز کریں، ہاتھوں کو صاف رکھیں اور ڈاکٹر سے رجوع کریں۔",
+    roman: "Aankh ka muaina mukammal. Ashoob-e-chashm ka khatra paya gaya hai. Bara-e-maherbani aankh ko malne se gurez karein, haathon ko saaf rakhein aur doctor se ruju karein."
   },
   skin: {
     en: "Evaluating skin lesion. Moderate contact dermatitis suspected on the back of the shoulder. Recommended: Apply a cool damp compress, keep the area moisturized, and avoid harsh chemicals or soaps.",
-    ur: "جلد کا معائنہ مکمل۔ کندھے پر معتدل الرجی اور سوجن پائی گئی ہے۔ متاثرہ حصے کو صاف اور نم رکھیں اور خارش سے بچنے کے لیے ڈاکٹر سے رجوع کریں۔"
+    ur: "جلد کا معائنہ مکمل۔ کندھے پر معتدل الرجی اور سوجن پائی گئی ہے۔ متاثرہ حصے کو صاف اور نم رکھیں اور خارش سے بچنے کے لیے ڈاکٹر سے رجوع کریں۔",
+    roman: "Jild ka muaina mukammal. Kandhay par mohtadil allergy aur soojan payi gayi hai. Mutasira hissay ko saaf aur nam rakhein aur kharish se bachne ke liye doctor se ruju karein."
+  },
+  wound: {
+    en: "Tracking wound healing timeline. Surgical incision sutures are clean, well-approximated, and healthy with low infection risk. Recommended: Keep the site clean and dry.",
+    ur: "زخم کی ٹریکنگ مکمل۔ ٹانکے بالکل صاف اور صحت مند ہیں اور انفیکشن کا خطرہ نہ ہونے کے برابر ہے۔ زخم کو صاف اور خشک رکھیں۔",
+    roman: "Zakham ki tracking mukammal. Taankay bilkul saaf aur sehat-mand hain aur infection ka khatra na hone ke barabar hai. Zakham ko saaf aur khushk rakhein."
+  },
+  cough: {
+    en: "Evaluating cough sound acoustics. Whooping cough pattern detected with paroxysmal breathing spasms. Recommended: Keep warm, stay hydrated, and consult a respiratory doctor.",
+    ur: "کھانسی کی آواز کا جائزہ مکمل۔ کالی کھانسی کا خطرہ پایا گیا ہے۔ جسم کو گرم رکھیں، پانی کا استعمال زیادہ کریں اور ڈاکٹر سے رجوع کریں۔",
+    roman: "Khansi ki awaz ka jaiza mukammal. Kaali khansi ka khatra paya gaya hai. Jism ko garm rakhein, paani ka istemaal zyada karein aur doctor se ruju karein."
+  },
+  sleep: {
+    en: "Analyzing sleep quality score. High Obstructive Sleep Apnea risk identified due to heavy chronic snoring. Recommended: Avoid sleeping on your back and seek a clinical sleep study.",
+    ur: "نیند کا معائنہ مکمل۔ خراٹوں کے باعث سلیپ اپنیا کا شدید خطرہ ہے۔ الٹا یا پیٹھ کے بل سونے سے پرہیز کریں اور معائنہ کروائیں۔",
+    roman: "Neend ka muaina mukammal. Kharaaton ke baais sleep apnea ka khatra hai. Ulta ya peeth ke bal sone se parhez karein aur muaina karwayein."
   },
   medicine: {
-    en: "Scanning medicine packaging. Verified authentic Panadol active paracetamol formulation. National Library of Medicine concept verified. Counterfeit risk: Low.",
-    ur: "ادویات کی تصدیق مکمل۔ پیناڈول گولی کی تصدیق ہو گئی ہے۔ یہ دوا سو فیصد اصلی ہے اور خطرے کی کوئی بات نہیں۔"
+    en: "Scanning medicine packaging. Verified authentic Metronidazole active anti-infective formulation. Counterfeit risk is low. Warning: Strictly avoid alcohol mixing.",
+    ur: "ادویات کی تصدیق مکمل۔ میٹرو نیدازول گولی کی تصدیق ہو گئی ہے اور یہ سو فیصد اصلی ہے۔ دوا کے ساتھ شراب کا استعمال بالکل نہ کریں۔",
+    roman: "Adviyat ki tasdeeq mukammal. Metronidazole goli ki tasdeeq ho gayi hai aur yeh sou feesad asli hai. Dawa ke sath sharaab ka istemaal bilkul na karein."
+  },
+  lab: {
+    en: "Breaking down laboratory blood test results. Critical leukocytosis detected with elevated white blood cell counts of 23.75, indicating acute bacterial infection. Seek clinical care immediately.",
+    ur: "لیب رپورٹ کا معائنہ مکمل۔ خون میں وائٹ سیلز کی تعداد تیئس اعشاریہ پچہتر ہے جو کہ شدید انفیکشن کی علامت ہے۔ فوری ڈاکٹر سے رجوع کریں۔",
+    roman: "Lab report ka jaiza mukammal. Khoon mein white cells ki taadaad 23.75 hai jo ke shadeed infection ki alamat hai. Fauri doctor se ruju karein."
+  },
+  hair: {
+    en: "Analyzing scalp and hair disease. Focal alopecia bald patch detected with no epidermal scarring. Recommended: Avoid hair styling heat and consult a dermatologist.",
+    ur: "بالوں کا معائنہ مکمل۔ جلد پر گنج پن کا دائرہ نما نشان پایا گیا ہے۔ بالوں پر استری یا کیمیکل کا استعمال روک دیں اور ڈاکٹر سے ملیں۔",
+    roman: "Balon ka muaina mukammal. Jild par ganj-pan ka daera-numa nishan paya gaya hai. Balon par istri ya chemical ka istemaal rok dein aur doctor se milein."
   },
   routine: {
     en: "Compiling daily habit prescription. Wellness score is 50 out of 100. High screen time of 9 hours and low sleep of 5 hours indicates severe fatigue. Recommended: reduce screen time and increase sleep duration.",
-    ur: "روزمرہ عادات کا جائزہ مکمل۔ صحت کا اسکور پچاس فیصد ہے۔ نو گھنٹے اسکرین کا استعمال اور پانچ گھنٹے نیند صحت کے لیے نقصان دہ ہے۔ اسکرین کا استعمال کم کریں۔"
+    ur: "روزمرہ عادات کا جائزہ مکمل۔ صحت کا اسکور پچاس فیصد ہے۔ نو گھنٹے اسکرین کا استعمال اور پانچ گھنٹے نیند صحت کے لیے نقصان دہ ہے۔ اسکرین کا استعمال کم کریں۔",
+    roman: "Rozmarra aadat ka jaiza mukammal. Sehat ka score 50% hai. Nou ghantay screen ka istemaal aur paanch ghantay neend sehat ke liye nuqsandeh hai. Screen ka istemaal kam karein."
   },
   voicedoc: {
-    en: "VoiceDoc rural triage completed. Symptom query for high fever processed. Recommended: Keep warm, hydrate with steam inhalation, and check WhatsApp for your clinician referral.",
-    ur: "وائس ڈاک دیہی رہنمائی مکمل۔ پریشانی کی کوئی بات نہیں۔ بھاپ کا استعمال کریں اور واٹس ایپ پر ڈاکٹر کی فراہم کردہ ہدایات پر عمل کریں۔"
+    en: "VoiceDoc rural triage completed. Symptom query for high fever processed. Recommended: Keep warm, hydrate with steam inhalation, and check WhatsApp for your referral.",
+    ur: "وائس ڈاک دیہی رہنمائی مکمل۔ پریشانی کی کوئی بات نہیں۔ بھاپ کا استعمال کریں اور واٹس ایپ پر ڈاکٹر کی فراہم کردہ ہدایات پر عمل کریں۔",
+    roman: "VoiceDoc deehi rehnumai mukammal. Pareshani ki koi baat nahi. Bhaap ka istemaal karein aur WhatsApp par doctor ki farahamakarda hidayat par amal karein."
   }
 }
 
@@ -145,15 +180,29 @@ export default function AutopilotConsole() {
     enUtterance.onend = () => {
       // 2. Play Urdu immediately after
       setCurrentLanguage('ur')
-      const urUtterance = new SpeechSynthesisUtterance(narrative.ur)
-      urUtterance.lang = 'ur-PK'
-      urUtterance.rate = 0.95
-
+      
       const voices = window.speechSynthesis.getVoices()
       const urVoice = voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu')) ||
                       voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi'))
+
+      let utteranceText = narrative.ur
+      let targetLangCode = 'ur-PK'
+
+      if (!urVoice) {
+        // Fallback to Roman Urdu using English voice
+        utteranceText = narrative.roman
+        targetLangCode = 'en-US'
+      }
+
+      const urUtterance = new SpeechSynthesisUtterance(utteranceText)
+      urUtterance.lang = targetLangCode
+      urUtterance.rate = urVoice ? 0.95 : 0.88
+
       if (urVoice) {
         urUtterance.voice = urVoice
+      } else {
+        const enVoice = voices.find(v => v.lang.startsWith('en'))
+        if (enVoice) urUtterance.voice = enVoice
       }
 
       urUtterance.onend = () => {

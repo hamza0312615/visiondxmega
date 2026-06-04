@@ -15,6 +15,7 @@ const navTranslations = {
     hair: 'Hair & Scalp AI',
     routine: 'Daily Routine Analyzer',
     voicedoc: 'VoiceDoc',
+    sign: 'PSL Translator',
     offline: 'Offline Agent',
     suggest: 'Suggest Meds',
     history: 'History Logs',
@@ -39,6 +40,7 @@ const navTranslations = {
     hair: 'بالوں کا AI',
     routine: 'روزمرہ AI',
     voicedoc: 'وائس ڈاکٹر',
+    sign: 'سائن ٹرانسلیٹر',
     offline: 'آف لائن ایجنٹ',
     suggest: 'تجویز ادویات',
     history: 'سابقہ ریکارڈ',
@@ -63,16 +65,17 @@ const diagnosticTools = [
   { path: '/lab-analyzer', key: 'lab', icon: '📄', color: 'amber', tag: 'Biomarkers' },
   { path: '/hair-analyzer', key: 'hair', icon: '💇', color: 'emerald', tag: 'Trichology' },
   { path: '/routine-analyzer', key: 'routine', icon: '📅', color: 'purple', tag: 'Wellness' },
+  { path: '/sign-translator', key: 'sign', icon: '🖐️', color: 'cyan', tag: 'Sign Lang' },
   { path: '/offline-agent', key: 'offline', icon: '📵', color: 'emerald', tag: 'No-WiFi' },
 ]
 
 const demoPresetItems = [
   {
-    page: '/lab-analyzer',
-    presetId: 'lab-1',
-    label: '📄 Abnormal Lab Report',
-    desc: 'Abdullah (18y, WBC 23.75)',
-    color: 'amber'
+    page: '/eye-predictor',
+    presetId: 'eye-1',
+    label: '👁️ Bacterial Conjunctivitis',
+    desc: 'Pink eye vascular congestion',
+    color: 'cyan'
   },
   {
     page: '/skin-analyzer',
@@ -82,11 +85,25 @@ const demoPresetItems = [
     color: 'rose'
   },
   {
-    page: '/eye-predictor',
-    presetId: 'eye-1',
-    label: '👁️ Bacterial Conjunctivitis',
-    desc: 'Pink eye vascular congestion',
-    color: 'cyan'
+    page: '/wound-tracker',
+    presetId: 'wound-1',
+    label: '🩹 Surgical Incision Stitches',
+    desc: 'Clean post-op suture lines',
+    color: 'green'
+  },
+  {
+    page: '/cough-detector',
+    presetId: 'cough-1',
+    label: '🎤 Acoustic Whooping Cough',
+    desc: 'Paroxysmal barking cough with whoop',
+    color: 'blue'
+  },
+  {
+    page: '/sleep-analyzer',
+    presetId: 'sleep-1',
+    label: '😴 Obstructive Sleep Apnea',
+    desc: 'Choking awake snoring characteristics',
+    color: 'purple'
   },
   {
     page: '/medicine-analyzer',
@@ -94,6 +111,34 @@ const demoPresetItems = [
     label: '💊 Flagyl 400mg OCR',
     desc: 'SANOFI Metronidazole validation',
     color: 'teal'
+  },
+  {
+    page: '/lab-analyzer',
+    presetId: 'lab-1',
+    label: '📄 Abnormal Lab Report',
+    desc: 'Abdullah (18y, WBC 23.75)',
+    color: 'amber'
+  },
+  {
+    page: '/hair-analyzer',
+    presetId: 'hair-1',
+    label: '💇 Alopecia Bald Spot',
+    desc: 'Circular vertex bald patch scalp scan',
+    color: 'emerald'
+  },
+  {
+    page: '/routine-analyzer',
+    presetId: 'routine-1',
+    label: '📅 Circadian Fatigue Routine',
+    desc: 'Sedentary habits & high sleep debt',
+    color: 'purple'
+  },
+  {
+    page: '/voicedoc',
+    presetId: 'voicedoc-1',
+    label: '🩺 High Fever Triage',
+    desc: 'Empathetic Roman Urdu voice chat',
+    color: 'green'
   }
 ]
 
@@ -113,6 +158,11 @@ export default function Navbar({ user, onLogout }) {
   const [toolsOpen, setToolsOpen] = useState(false)
   const [demoOpen, setDemoOpen] = useState(false)
   const [portalOpen, setPortalOpen] = useState(false)
+  
+  // Mobile accordion state hooks
+  const [mobilePresetsOpen, setMobilePresetsOpen] = useState(false)
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
+  const [mobilePortalOpen, setMobilePortalOpen] = useState(false)
   
   const dropdownRef = useRef(null)
   const demoDropdownRef = useRef(null)
@@ -197,7 +247,7 @@ export default function Navbar({ user, onLogout }) {
           </Link>
 
           {/* Desktop Nav Items */}
-          <div className="hidden lg:flex items-center gap-2">
+          <div className="hidden xl:flex items-center gap-2">
             
             {/* 1. Dashboard Link */}
             <Link
@@ -432,20 +482,37 @@ export default function Navbar({ user, onLogout }) {
               </div>
             )}
 
-            {/* Language Switch Button */}
-            <button
-              onClick={toggleLang}
-              className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-md hover:border-medical-green/30 active:scale-[0.98] shrink-0 whitespace-nowrap"
-              title="Switch Website Language (English / Urdu)"
-            >
-              <span>🌐</span> <span className="font-outfit uppercase tracking-wider shrink-0 whitespace-nowrap">{t.switchLang}</span>
-            </button>
+            {/* Enhanced Segmented Language Switcher (Hidden on Mobile) */}
+            <div className="hidden sm:flex items-center bg-white/5 border border-white/10 rounded-xl p-1 shadow-inner shrink-0">
+              <button
+                onClick={() => lang !== 'en' && setSiteLanguage('en')}
+                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase transition-all duration-300 tracking-wider flex items-center gap-1 font-outfit ${
+                  lang === 'en'
+                    ? 'bg-gradient-to-r from-medical-green to-medical-blue text-navy-950 shadow-md font-black scale-105'
+                    : 'text-white/50 hover:text-white/80'
+                }`}
+                title="English Language"
+              >
+                🇺🇸 EN
+              </button>
+              <button
+                onClick={() => lang !== 'ur' && setSiteLanguage('ur')}
+                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold transition-all duration-300 tracking-wider flex items-center gap-1 font-outfit ${
+                  lang === 'ur'
+                    ? 'bg-gradient-to-r from-medical-green to-medical-blue text-navy-950 shadow-md font-black scale-105'
+                    : 'text-white/50 hover:text-white/80'
+                }`}
+                title="اردو زبان"
+              >
+                🇵🇰 اردو
+              </button>
+            </div>
 
-            {/* Sign Out Button */}
+            {/* Sign Out Button (Hidden on Mobile) */}
             {user && (
               <button
                 onClick={onLogout}
-                className="px-3.5 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 font-bold text-xs transition-all flex items-center gap-1.5 shadow-md active:scale-[0.98] shrink-0 whitespace-nowrap"
+                className="hidden sm:flex px-3.5 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 font-bold text-xs transition-all flex items-center gap-1.5 shadow-md active:scale-[0.98] shrink-0 whitespace-nowrap"
                 title="Sign Out"
               >
                 <span>🔑</span> <span className="font-outfit shrink-0 whitespace-nowrap">{t.logout}</span>
@@ -454,7 +521,7 @@ export default function Navbar({ user, onLogout }) {
 
             {/* Mobile Menu Button */}
             <button
-              className="lg:hidden p-2 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/5 transition-all"
+              className="xl:hidden p-2 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/5 transition-all"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label="Toggle mobile menu"
             >
@@ -471,103 +538,215 @@ export default function Navbar({ user, onLogout }) {
 
       {/* Mobile Menu Overlay */}
       {mobileOpen && (
-        <div className="lg:hidden border-t border-white/5 bg-[#020810]/95 px-4 py-4 space-y-1.5 max-h-[80vh] overflow-y-auto backdrop-blur-2xl rounded-b-2xl">
+        <div className="xl:hidden border-t border-white/5 bg-[#020810]/95 px-4 py-5 space-y-4 max-h-[85vh] overflow-y-auto backdrop-blur-2xl rounded-b-3xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] border border-white/5 fade-in duration-200">
+          
           {user && (
-            <div className="px-4 py-2.5 mb-2 rounded-xl bg-white/5 border border-white/5 text-xs text-white/80 font-bold">
-              👤 {user.name} ({user.age} Years, {user.gender})
+            <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-xs text-white/80 font-bold flex items-center justify-between shadow-inner">
+              <span className="flex items-center gap-2">👤 {user.name}</span>
+              <span className="text-white/40 font-normal">{user.age} Years, {user.gender}</span>
             </div>
           )}
 
-          {/* Mobile Try Clinical Demo Selector */}
-          <div className="text-[10px] text-emerald-400 uppercase font-bold tracking-wider px-4 py-1 mt-1">🔬 Clinical Demo Presets</div>
-          {demoPresetItems.map(item => {
-            return (
+          {/* Mobile Language Switcher */}
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 shadow-inner">
+            <span className="text-xs font-bold text-white/70">Language / زبان:</span>
+            <div className="flex items-center bg-navy-950/60 border border-white/10 rounded-xl p-1 shadow-inner">
               <button
-                key={item.presetId}
-                type="button"
                 onClick={() => {
-                  setMobileOpen(false)
-                  handlePresetClick(item.page, item.presetId)
+                  if (lang !== 'en') {
+                    setSiteLanguage('en');
+                    setMobileOpen(false);
+                  }
                 }}
-                className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left bg-emerald-500/5 border border-emerald-500/10 text-emerald-400 mt-1 hover:bg-emerald-500/10 transition-all"
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase transition-all duration-300 tracking-wider flex items-center gap-1 font-outfit ${
+                  lang === 'en'
+                    ? 'bg-gradient-to-r from-medical-green to-medical-blue text-navy-950 shadow-md font-black'
+                    : 'text-white/50 hover:text-white/80'
+                }`}
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-base">{item.label.split(' ')[0]}</span>
-                  <div>
-                    <div className="text-xs font-bold font-outfit">{item.label.split(' ').slice(1).join(' ')}</div>
-                    <div className="text-[9px] text-emerald-400/60 font-medium">{item.desc}</div>
-                  </div>
-                </div>
-                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold uppercase">Load</span>
+                🇺🇸 EN
               </button>
-            )
-          })}
-          
-          <div className="text-[10px] text-white/40 uppercase font-bold tracking-wider px-4 py-1 pt-3 border-t border-white/5 mt-2">Main System Hubs</div>
-          <Link
-            to="/"
-            onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
-              location.pathname === '/'
-                ? 'bg-medical-green/10 border border-medical-green/20 text-medical-green'
-                : 'text-white/70 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <span className="text-base">🏠</span>
-            <span>{t.dashboard}</span>
-          </Link>
-          <Link
-            to="/voicedoc"
-            onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
-              location.pathname === '/voicedoc'
-                ? 'bg-medical-green/10 border border-medical-green/20 text-medical-green'
-                : 'text-white/70 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <span className="text-base">🩺</span>
-            <span>{t.voicedoc}</span>
-          </Link>
-
-          <div className="text-[10px] text-white/40 uppercase font-bold tracking-wider px-4 py-1 pt-3 border-t border-white/5 mt-2">Patient Records & Settings</div>
-          {portalItems.map(item => {
-            const active = location.pathname === item.path
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
-                  active
-                    ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
-                    : 'text-white/70 hover:text-white hover:bg-white/5'
+              <button
+                onClick={() => {
+                  if (lang !== 'ur') {
+                    setSiteLanguage('ur');
+                    setMobileOpen(false);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold transition-all duration-300 tracking-wider flex items-center gap-1 font-outfit ${
+                  lang === 'ur'
+                    ? 'bg-gradient-to-r from-medical-green to-medical-blue text-navy-950 shadow-md font-black'
+                    : 'text-white/50 hover:text-white/80'
                 }`}
               >
-                <span className="text-base">{item.icon}</span>
-                <span>{t[item.key]}</span>
-              </Link>
-            )
-          })}
+                🇵🇰 اردو
+              </button>
+            </div>
+          </div>
 
-          <div className="text-[10px] text-white/40 uppercase font-bold tracking-wider px-4 py-1 pt-3 border-t border-white/5 mt-2">Clinical Diagnostics</div>
-          {diagnosticTools.map(tool => {
-            const active = location.pathname === tool.path
-            return (
-              <Link
-                key={tool.path}
-                to={tool.path}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
-                  active
-                    ? 'bg-purple-500/10 border-purple-500/20 text-purple-400'
-                    : 'text-white/70 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <span className="text-base">{tool.icon}</span>
-                <span>{t[tool.key]}</span>
-              </Link>
-            )
-          })}
+          {/* 1. Try Clinical Demos Accordion */}
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={() => setMobilePresetsOpen(!mobilePresetsOpen)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
+                mobilePresetsOpen
+                  ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                  : 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400 hover:bg-emerald-500/10'
+              }`}
+            >
+              <span className="flex items-center gap-2">🔬 Clinical Demo Presets ({demoPresetItems.length})</span>
+              <span className={`text-[10px] transition-transform duration-300 ${mobilePresetsOpen ? 'rotate-180' : ''}`}>▼</span>
+            </button>
+
+            {mobilePresetsOpen && (
+              <div className="pl-1 pr-1 py-2.5 space-y-2 max-h-[280px] overflow-y-auto border border-emerald-500/10 rounded-xl bg-emerald-500/5 mt-1.5 slide-in-up duration-200 scrollbar-thin">
+                {demoPresetItems.map(item => (
+                  <button
+                    key={item.presetId}
+                    type="button"
+                    onClick={() => {
+                      setMobileOpen(false)
+                      handlePresetClick(item.page, item.presetId)
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl text-left bg-[#020810]/70 border border-white/5 hover:border-emerald-500/20 text-white transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg leading-none shrink-0">{item.label.split(' ')[0]}</span>
+                      <div>
+                        <div className="text-xs font-bold text-white/90 leading-tight">{item.label.split(' ').slice(1).join(' ')}</div>
+                        <div className="text-[9px] text-white/45 mt-0.5 font-medium leading-relaxed">{item.desc}</div>
+                      </div>
+                    </div>
+                    <span className="text-[8px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-black uppercase tracking-wider shrink-0 ml-2">Load</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 2. AI Diagnostics Accordion */}
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={() => setMobileToolsOpen(!mobileToolsOpen)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
+                mobileToolsOpen
+                  ? 'bg-purple-500/15 border-purple-500/35 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.1)]'
+                  : 'bg-white/5 border-white/5 text-white/80 hover:bg-white/10 hover:border-white/10'
+              }`}
+            >
+              <span className="flex items-center gap-2">⚡ AI Diagnostics ({diagnosticTools.length})</span>
+              <span className={`text-[10px] transition-transform duration-300 ${mobileToolsOpen ? 'rotate-180' : ''}`}>▼</span>
+            </button>
+
+            {mobileToolsOpen && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 rounded-xl bg-[#020810]/40 border border-white/5 mt-1.5 slide-in-up duration-200">
+                {diagnosticTools.map(tool => {
+                  const active = location.pathname === tool.path
+                  return (
+                    <Link
+                      key={tool.path}
+                      to={tool.path}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
+                        active
+                          ? 'bg-purple-500/15 border-purple-500/35 text-purple-400 shadow-md shadow-purple-500/5'
+                          : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10 text-white'
+                      }`}
+                    >
+                      <span className="text-lg leading-none">{tool.icon}</span>
+                      <span className="text-xs font-bold font-outfit">{t[tool.key]}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 3. Records & Portal Accordion */}
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={() => setMobilePortalOpen(!mobilePortalOpen)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
+                mobilePortalOpen
+                  ? 'bg-cyan-500/15 border-cyan-500/35 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
+                  : 'bg-white/5 border-white/5 text-white/80 hover:bg-white/10'
+              }`}
+            >
+              <span className="flex items-center gap-2">📋 Records & Portal ({portalItems.length})</span>
+              <span className={`text-[10px] transition-transform duration-300 ${mobilePortalOpen ? 'rotate-180' : ''}`}>▼</span>
+            </button>
+
+            {mobilePortalOpen && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 rounded-xl bg-[#020810]/40 border border-white/5 mt-1.5 slide-in-up duration-200">
+                {portalItems.map(item => {
+                  const active = location.pathname === item.path
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
+                        active
+                          ? 'bg-cyan-500/15 border-cyan-500/35 text-cyan-400 shadow-md shadow-cyan-500/5'
+                          : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10 text-white'
+                      }`}
+                    >
+                      <span className="text-lg leading-none">{item.icon}</span>
+                      <span className="text-xs font-bold font-outfit">{t[item.key]}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 4. Main Nav Hub Links */}
+          <div className="border-t border-white/5 pt-4 space-y-2.5">
+            <div className="text-[10px] text-white/40 uppercase font-black tracking-widest px-2 mb-1.5">System Hubs</div>
+            
+            <Link
+              to="/"
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold border transition-all duration-200 ${
+                location.pathname === '/'
+                  ? 'bg-medical-green/10 border-medical-green/30 text-medical-green shadow-[0_0_12px_rgba(0,212,170,0.08)]'
+                  : 'bg-white/5 border-white/5 text-white/80 hover:bg-white/10'
+              }`}
+            >
+              <span className="text-base leading-none">🏠</span>
+              <span>{t.dashboard}</span>
+            </Link>
+
+            <Link
+              to="/voicedoc"
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold border transition-all duration-200 ${
+                location.pathname === '/voicedoc'
+                  ? 'bg-medical-green/10 border-medical-green/30 text-medical-green shadow-[0_0_12px_rgba(0,212,170,0.08)]'
+                  : 'bg-white/5 border-white/5 text-white/80 hover:bg-white/10'
+              }`}
+            >
+              <span className="text-base leading-none">🩺</span>
+              <span>{t.voicedoc}</span>
+            </Link>
+          </div>
+
+          {/* Mobile Sign Out Button */}
+          {user && (
+            <button
+              onClick={() => {
+                setMobileOpen(false)
+                onLogout()
+              }}
+              className="w-full py-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md"
+            >
+              <span>🔑</span> {t.logout}
+            </button>
+          )}
+
         </div>
       )}
     </nav>

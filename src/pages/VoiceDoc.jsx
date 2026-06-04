@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { transcribeAudio, analyzeText } from '../utils/groqApi'
-import { saveResult, getWhatsAppConfig } from '../utils/localStorage'
+import { saveResult, getWhatsAppConfig, getApiKey } from '../utils/localStorage'
+import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
@@ -15,6 +16,7 @@ export default function VoiceDoc() {
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('Transcribing voice audio...')
   const [error, setError] = useState('')
+  const [voiceFallbackAlert, setVoiceFallbackAlert] = useState('')
   const [currentResult, setCurrentResult] = useState(null)
   const [speaking, setSpeaking] = useState(false)
 
@@ -44,7 +46,18 @@ export default function VoiceDoc() {
 
     const runAutopilot = async () => {
       const isAutopilot = localStorage.getItem('visiondx_autopilot') === 'active' && localStorage.getItem('visiondx_autopilot_step') === 'voicedoc'
-      if (isAutopilot) {
+      const storedTrigger = localStorage.getItem('visiondx_nav_preset_trigger')
+      
+      let preset = false
+      if (storedTrigger) {
+        const parsed = JSON.parse(storedTrigger)
+        if (parsed.page === '/voicedoc') {
+          preset = true
+          localStorage.removeItem('visiondx_nav_preset_trigger')
+        }
+      }
+
+      if (isAutopilot || preset) {
         setTextInput("I have high fever and severe dry cough")
         setLanguage("Urdu / اردو")
         
@@ -55,7 +68,13 @@ export default function VoiceDoc() {
     }
     runAutopilot()
 
+    const handleNavTrigger = () => {
+      runAutopilot()
+    }
+    window.addEventListener('visiondx-preset-triggered', handleNavTrigger)
+
     return () => {
+      window.removeEventListener('visiondx-preset-triggered', handleNavTrigger)
       if (synthRef.current) {
         synthRef.current.cancel()
       }
@@ -124,13 +143,51 @@ export default function VoiceDoc() {
     setError('')
     setCurrentResult(null)
 
+    // Preset simulated fallback mode if API keys are missing
+    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
+    if (audioBlob && !hasKey) {
+      setTimeout(() => {
+        const saved = saveResult('voicedoc', demoPresets.voicedoc[0].fallbackResult)
+        setCurrentResult(saved)
+        setLoading(false)
+        speakText(saved.speechText, language)
+        if (localStorage.getItem('visiondx_autopilot') === 'active') {
+          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'voicedoc', result: saved } }))
+        }
+      }, 1500)
+      return
+    }
+
     try {
       setLoadingMsg('Transcribing patient speech with Whisper AI...')
       const transcription = await transcribeAudio(audioBlob)
 
       const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : []
-      const hasUrduVoice = !!voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu'))
-      const useRomanUrdu = language.includes('Roman') || (language.includes('Urdu') && !hasUrduVoice)
+      const hasVoice = (langKey) => !!voices.find(v => v.lang.toLowerCase().includes(langKey.toLowerCase()) || v.name.toLowerCase().includes(langKey.toLowerCase()))
+
+      const isUrdu = language.includes('Urdu')
+      const isHindi = language.includes('Hindi')
+      const isArabic = language.includes('Arabic')
+      const isBengali = language.includes('Bengali')
+      const isPunjabi = language.includes('Punjabi')
+      const isPashto = language.includes('Pashto')
+      const isSindhi = language.includes('Sindhi')
+
+      const voiceMissing = (isUrdu && !hasVoice('ur')) ||
+                           (isHindi && !hasVoice('hi')) ||
+                           (isArabic && !hasVoice('ar')) ||
+                           (isBengali && !hasVoice('bn')) ||
+                           (isPunjabi && !hasVoice('pa')) ||
+                           (isPashto && !hasVoice('ps')) ||
+                           (isSindhi && !hasVoice('sd'))
+
+      if (voiceMissing && !language.includes('English') && !language.includes('Roman')) {
+        setVoiceFallbackAlert(`Note: Native system voice for ${language.split(' / ')[0]} was not found. Speech guidance is falling back to phonetic Roman Urdu.`)
+      } else {
+        setVoiceFallbackAlert('')
+      }
+
+      const useRomanUrdu = language.includes('Roman') || (voiceMissing && !language.includes('English'))
 
       const displayLangName = useRomanUrdu ? 'Roman Urdu / رومن اردو' : language
       setLoadingMsg(`Analyzing triage symptoms and translating response into ${displayLangName}...`)
@@ -196,10 +253,48 @@ Instructions:
     setError('')
     setCurrentResult(null)
 
+    // Preset simulated fallback mode if API keys are missing
+    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
+    if (!hasKey) {
+      setTimeout(() => {
+        const saved = saveResult('voicedoc', demoPresets.voicedoc[0].fallbackResult)
+        setCurrentResult(saved)
+        setLoading(false)
+        speakText(saved.speechText, language)
+        if (localStorage.getItem('visiondx_autopilot') === 'active') {
+          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'voicedoc', result: saved } }))
+        }
+      }, 1500)
+      return
+    }
+
     try {
       const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : []
-      const hasUrduVoice = !!voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu'))
-      const useRomanUrdu = language.includes('Roman') || (language.includes('Urdu') && !hasUrduVoice)
+      const hasVoice = (langKey) => !!voices.find(v => v.lang.toLowerCase().includes(langKey.toLowerCase()) || v.name.toLowerCase().includes(langKey.toLowerCase()))
+
+      const isUrdu = language.includes('Urdu')
+      const isHindi = language.includes('Hindi')
+      const isArabic = language.includes('Arabic')
+      const isBengali = language.includes('Bengali')
+      const isPunjabi = language.includes('Punjabi')
+      const isPashto = language.includes('Pashto')
+      const isSindhi = language.includes('Sindhi')
+
+      const voiceMissing = (isUrdu && !hasVoice('ur')) ||
+                           (isHindi && !hasVoice('hi')) ||
+                           (isArabic && !hasVoice('ar')) ||
+                           (isBengali && !hasVoice('bn')) ||
+                           (isPunjabi && !hasVoice('pa')) ||
+                           (isPashto && !hasVoice('ps')) ||
+                           (isSindhi && !hasVoice('sd'))
+
+      if (voiceMissing && !language.includes('English') && !language.includes('Roman')) {
+        setVoiceFallbackAlert(`Note: Native system voice for ${language.split(' / ')[0]} was not found. Speech guidance is falling back to phonetic Roman Urdu.`)
+      } else {
+        setVoiceFallbackAlert('')
+      }
+
+      const useRomanUrdu = language.includes('Roman') || (voiceMissing && !language.includes('English'))
 
       const displayLangName = useRomanUrdu ? 'Roman Urdu / رومن اردو' : language
       setLoadingMsg(`Analyzing patient text message and translating response into ${displayLangName}...`)
@@ -265,28 +360,26 @@ Instructions:
 
     if (!text) return
 
-    const utterance = new SpeechSynthesisUtterance(text)
-    
+    const voices = synthRef.current.getVoices()
+    const hasVoice = (langKey) => !!voices.find(v => v.lang.toLowerCase().includes(langKey.toLowerCase()) || v.name.toLowerCase().includes(langKey.toLowerCase()))
+
     let langCode = 'en-US'
     if (lang.includes('Roman')) langCode = 'ur-roman'
     else if (lang.includes('Urdu')) {
-      const voices = synthRef.current.getVoices()
-      const hasUrduVoice = !!voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu'))
-      langCode = hasUrduVoice ? 'ur-PK' : 'ur-roman'
+      langCode = hasVoice('ur') ? 'ur-PK' : 'ur-roman'
     }
-    else if (lang.includes('Hindi')) langCode = 'hi-IN'
-    else if (lang.includes('Punjabi')) langCode = 'pa-IN'
-    else if (lang.includes('Pashto')) langCode = 'ps-AF'
-    else if (lang.includes('Sindhi')) langCode = 'sd-PK'
-    else if (lang.includes('Arabic')) langCode = 'ar-SA'
-    else if (lang.includes('Bengali')) langCode = 'bn-BD'
+    else if (lang.includes('Hindi')) langCode = hasVoice('hi') ? 'hi-IN' : 'ur-roman'
+    else if (lang.includes('Punjabi')) langCode = hasVoice('pa') ? 'pa-IN' : 'ur-roman'
+    else if (lang.includes('Pashto')) langCode = hasVoice('ps') ? 'ps-AF' : 'ur-roman'
+    else if (lang.includes('Sindhi')) langCode = hasVoice('sd') ? 'sd-PK' : 'ur-roman'
+    else if (lang.includes('Arabic')) langCode = hasVoice('ar') ? 'ar-SA' : 'ur-roman'
+    else if (lang.includes('Bengali')) langCode = hasVoice('bn') ? 'bn-BD' : 'ur-roman'
 
-    // If we are speaking Roman Urdu, we use standard English voice
     const targetLangCode = langCode === 'ur-roman' ? 'en-US' : langCode
+    const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = targetLangCode
-    utterance.rate = langCode === 'ur-roman' ? 0.88 : 0.9 // slightly slower for Roman Urdu to sound natural
+    utterance.rate = langCode === 'ur-roman' ? 0.88 : 0.9
 
-    const voices = synthRef.current.getVoices()
     let bestVoice = voices.find(v => v.lang.toLowerCase() === targetLangCode.toLowerCase()) ||
                      voices.find(v => v.lang.toLowerCase().startsWith(targetLangCode.split('-')[0].toLowerCase()))
 
@@ -416,6 +509,7 @@ Instructions:
     setTextInput('')
     setCurrentResult(null)
     setError('')
+    setVoiceFallbackAlert('')
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
     setRecording(false)
   }
@@ -445,6 +539,12 @@ Instructions:
       {error && (
         <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-3 fade-in shadow-lg">
           <span>⚠️</span> {error}
+        </div>
+      )}
+
+      {voiceFallbackAlert && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-center gap-3 fade-in shadow-lg">
+          <span>🔊</span> {voiceFallbackAlert}
         </div>
       )}
 

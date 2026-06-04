@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { analyzeText } from '../utils/groqApi'
-import { saveResult, isDemoMode, setDemoMode, getDemoData } from '../utils/localStorage'
+import { saveResult, isDemoMode, setDemoMode, getDemoData, getApiKey } from '../utils/localStorage'
+import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
@@ -20,7 +21,18 @@ export default function DailyRoutineAnalyzer() {
   useEffect(() => {
     const runDemo = async () => {
       const isAutopilot = localStorage.getItem('visiondx_autopilot') === 'active' && localStorage.getItem('visiondx_autopilot_step') === 'routine'
-      if (isDemoMode() || isAutopilot) {
+      const storedTrigger = localStorage.getItem('visiondx_nav_preset_trigger')
+      
+      let preset = false
+      if (storedTrigger) {
+        const parsed = JSON.parse(storedTrigger)
+        if (parsed.page === '/routine-analyzer') {
+          preset = true
+          localStorage.removeItem('visiondx_nav_preset_trigger')
+        }
+      }
+      
+      if (preset || isDemoMode() || isAutopilot) {
         if (isDemoMode()) setDemoMode(false) // Clear global demo mode flag immediately to prevent repeat triggers
         const demoData = getDemoData('routine')
         if (demoData) {
@@ -32,13 +44,22 @@ export default function DailyRoutineAnalyzer() {
           setDiet('Fast Food / Processed Meals')
           setGoal('Mental Focus & Productivity')
           
-          setTimeout(() => {
-            handleAnalyze()
-          }, 1505)
+          if (isAutopilot || preset) {
+            setLoading(true)
+            setTimeout(() => {
+              handleAnalyze()
+            }, 1200)
+          }
         }
       }
     }
     runDemo()
+
+    const handleNavTrigger = () => {
+      runDemo()
+    }
+    window.addEventListener('visiondx-preset-triggered', handleNavTrigger)
+    return () => window.removeEventListener('visiondx-preset-triggered', handleNavTrigger)
   }, [])
 
   // Calculate live health score in real-time
@@ -91,6 +112,20 @@ export default function DailyRoutineAnalyzer() {
     setLoading(true)
     setError('')
     setCurrentResult(null)
+
+    // Preset simulated fallback mode if API keys are missing
+    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
+    if (!hasKey) {
+      setTimeout(() => {
+        const saved = saveResult('routine', demoPresets.routine[0].fallbackResult)
+        setCurrentResult(saved)
+        setLoading(false)
+        if (localStorage.getItem('visiondx_autopilot') === 'active') {
+          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'routine', result: saved } }))
+        }
+      }, 1500)
+      return
+    }
 
     const finalScore = liveScore
 

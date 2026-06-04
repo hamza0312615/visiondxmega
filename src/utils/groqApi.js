@@ -164,7 +164,40 @@ export async function transcribeAudio(audioBlob, apiKey) {
  */
 export async function analyzeText(prompt, apiKey) {
   const key = apiKey || getApiKey()
-  if (!key) throw new Error('No API key found. Please set your Groq API key in Settings.')
+  
+  if (!key) {
+    const geminiKey = localStorage.getItem('visiondx_gemini_key') || import.meta.env.VITE_GEMINI_API_KEY
+    if (geminiKey) {
+      try {
+        console.log('Using Gemini API fallback for text analysis...')
+        const genAI = new GoogleGenerativeAI(geminiKey)
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+        const result = await model.generateContent(prompt)
+        const text = result.response.text()
+        if (text) return text
+      } catch (geminiErr) {
+        console.warn('Gemini SDK text translation failed, attempting REST...', geminiErr)
+        try {
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`
+          const response = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }]
+            })
+          })
+          if (response.ok) {
+            const data = await response.json()
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+            if (text) return text
+          }
+        } catch (restErr) {
+          console.error('Gemini REST text translation also failed', restErr)
+        }
+      }
+    }
+    throw new Error('No API key found. Please set your API key in Settings.')
+  }
 
   const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
     method: 'POST',
