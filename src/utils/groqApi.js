@@ -71,7 +71,6 @@ export async function analyzeImage(imageFile, prompt, apiKey) {
   const geminiKey = localStorage.getItem('visiondx_gemini_key') || import.meta.env.VITE_GEMINI_API_KEY
   if (geminiKey) {
     try {
-      console.log('Attempting Gemini Vision API fallback via @google/generative-ai SDK...')
       const genAI = new GoogleGenerativeAI(geminiKey)
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
       const result = await model.generateContent([
@@ -115,7 +114,6 @@ export async function analyzeImage(imageFile, prompt, apiKey) {
   // Priority 3: Fallback to OCR / Intelligent Text Analysis Fallback
   // If vision models fail or are unavailable, we use the highly reliable llama-3.3-70b-versatile text model to perform the diagnostic analysis!
   try {
-    console.log('Using OCR / Text Fallback for image analysis...')
     const ocrPrompt = `You are a state-of-the-art Medical OCR & Clinical Vision AI. A clinical image was uploaded for analysis.
 User Diagnostic Prompt / Context: "${prompt}"
 
