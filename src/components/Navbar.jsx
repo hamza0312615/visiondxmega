@@ -288,7 +288,7 @@ export default function Navbar({ user, onLogout }) {
 
               {/* Dynamic Dropping Grid (Frosted Glass Panel) */}
               {toolsOpen && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[440px] bg-[#020810]/95 border border-white/10 rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl grid grid-cols-2 gap-3 fade-in duration-300 z-50">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[440px] bg-[#020810]/95 border border-white/10 rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl grid grid-cols-2 gap-3 fade-in duration-300 z-50 before:content-[''] before:absolute before:-top-2 before:left-0 before:w-full before:h-2">
                   <div className="absolute inset-0 bg-gradient-to-tr from-medical-green/5 to-purple-500/5 rounded-2xl pointer-events-none" />
                   
                   {diagnosticTools.map(tool => {
@@ -346,7 +346,7 @@ export default function Navbar({ user, onLogout }) {
 
               {/* Demo Menu Grid */}
               {demoOpen && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[420px] bg-[#020810]/95 border border-emerald-500/30 rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl space-y-2.5 z-50 fade-in duration-300">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[420px] bg-[#020810]/95 border border-emerald-500/30 rounded-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl space-y-2.5 z-50 fade-in duration-300 before:content-[''] before:absolute before:-top-2 before:left-0 before:w-full before:h-2">
                   <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 to-transparent rounded-2xl pointer-events-none" />
                   
                   <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider px-1 pb-1 border-b border-white/10 flex justify-between items-center">
@@ -429,7 +429,7 @@ export default function Navbar({ user, onLogout }) {
 
               {/* Portal Menu Dropdown */}
               {portalOpen && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[280px] bg-[#020810]/95 border border-white/10 rounded-2xl p-3 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl space-y-1.5 z-50 fade-in duration-300">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[280px] bg-[#020810]/95 border border-white/10 rounded-2xl p-3 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl space-y-1.5 z-50 fade-in duration-300 before:content-[''] before:absolute before:-top-2 before:left-0 before:w-full before:h-2">
                   <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/5 to-transparent rounded-2xl pointer-events-none" />
                   
                   {portalItems.map(item => {

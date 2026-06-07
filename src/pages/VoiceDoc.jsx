@@ -5,6 +5,7 @@ import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
+import { speakText as centralSpeakText, cancelSpeech } from '../utils/ttsService'
 
 export default function VoiceDoc() {
   const [recording, setRecording] = useState(false)
@@ -75,9 +76,7 @@ export default function VoiceDoc() {
 
     return () => {
       window.removeEventListener('visiondx-preset-triggered', handleNavTrigger)
-      if (synthRef.current) {
-        synthRef.current.cancel()
-      }
+      cancelSpeech()
     }
   }, [])
 
@@ -355,59 +354,34 @@ Instructions:
   }
 
   const speakText = (text, lang) => {
-    if (!synthRef.current) return
-    synthRef.current.cancel()
-
     if (!text) return
+    cancelSpeech()
 
-    const voices = synthRef.current.getVoices()
-    const hasVoice = (langKey) => !!voices.find(v => v.lang.toLowerCase().includes(langKey.toLowerCase()) || v.name.toLowerCase().includes(langKey.toLowerCase()))
+    const hasElevenLabsKey = !!(import.meta.env.VITE_ELEVENLABS_API_KEY || localStorage.getItem('visiondx_elevenlabs_key'))
 
     let langCode = 'en-US'
     if (lang.includes('Roman')) langCode = 'ur-roman'
-    else if (lang.includes('Urdu')) {
-      langCode = hasVoice('ur') ? 'ur-PK' : 'ur-roman'
-    }
-    else if (lang.includes('Hindi')) langCode = hasVoice('hi') ? 'hi-IN' : 'ur-roman'
-    else if (lang.includes('Punjabi')) langCode = hasVoice('pa') ? 'pa-IN' : 'ur-roman'
-    else if (lang.includes('Pashto')) langCode = hasVoice('ps') ? 'ps-AF' : 'ur-roman'
-    else if (lang.includes('Sindhi')) langCode = hasVoice('sd') ? 'sd-PK' : 'ur-roman'
-    else if (lang.includes('Arabic')) langCode = hasVoice('ar') ? 'ar-SA' : 'ur-roman'
-    else if (lang.includes('Bengali')) langCode = hasVoice('bn') ? 'bn-BD' : 'ur-roman'
+    else if (lang.includes('Urdu')) langCode = 'ur-PK'
+    else if (lang.includes('Hindi')) langCode = 'hi-IN'
+    else if (lang.includes('Punjabi')) langCode = 'pa-IN'
+    else if (lang.includes('Pashto')) langCode = 'ps-AF'
+    else if (lang.includes('Sindhi')) langCode = 'sd-PK'
+    else if (lang.includes('Arabic')) langCode = 'ar-SA'
+    else if (lang.includes('Bengali')) langCode = 'bn-BD'
 
-    const targetLangCode = langCode === 'ur-roman' ? 'en-US' : langCode
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = targetLangCode
-    utterance.rate = langCode === 'ur-roman' ? 0.88 : 0.9
+    // We rely entirely on centralSpeakText (which uses Google TTS proxy)
+    // so we do not need to check for native voices or do hacky overrides.
 
-    let bestVoice = voices.find(v => v.lang.toLowerCase() === targetLangCode.toLowerCase()) ||
-                     voices.find(v => v.lang.toLowerCase().startsWith(targetLangCode.split('-')[0].toLowerCase()))
-
-    if (langCode === 'ur-PK') {
-      bestVoice = voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu')) || bestVoice
-    } else if (langCode === 'ur-roman') {
-      bestVoice = voices.find(v => v.lang.startsWith('en')) || bestVoice
-    } else if (langCode === 'hi-IN') {
-      bestVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi') || v.name.includes('Google ID')) || bestVoice
-    } else if (langCode === 'ar-SA') {
-      bestVoice = voices.find(v => v.lang.includes('ar') || v.name.includes('Arabic')) || bestVoice
-    }
-
-    if (bestVoice) {
-      utterance.voice = bestVoice
-    }
-
-    utterance.onstart = () => setSpeaking(true)
-    utterance.onend = () => setSpeaking(false)
-    utterance.onerror = () => setSpeaking(false)
-
-    synthRef.current.speak(utterance)
+    centralSpeakText(text, langCode, {
+      onStart: () => setSpeaking(true),
+      onEnd: () => setSpeaking(false),
+      onError: () => setSpeaking(false)
+    })
   }
 
   const toggleSpeech = () => {
-    if (!synthRef.current) return
     if (speaking) {
-      synthRef.current.cancel()
+      cancelSpeech()
       setSpeaking(false)
     } else if (currentResult && currentResult.speechText) {
       speakText(currentResult.speechText, language)

@@ -9,6 +9,7 @@ import {
   getApiKey,
   deleteEntry
 } from '../utils/localStorage'
+import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react'
 
 export default function WoundTracker() {
+  const { saveToCHW } = useSaveToCHW()
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const [activeTab, setActiveTab] = useState('upload') // 'upload' or 'webcam'
@@ -244,6 +246,9 @@ Our Computer Vision segmentation pipeline has extracted these exact physical met
         setCurrentResult(saved)
         loadTimeline()
         
+        const chwRisk = recommendation === 'EMERGENCY' ? 'critical' : recommendation === 'SEE_DOCTOR' ? 'warning' : 'normal'
+        saveToCHW('WoundTracker', resultData.summary, chwRisk, resultData)
+        
         if (localStorage.getItem('visiondx_autopilot') === 'active') {
           window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'wound', result: saved } }))
         }
@@ -321,6 +326,9 @@ Our Computer Vision segmentation pipeline has extracted these exact physical met
           setLoading(false)
           loadTimeline()
           
+          const chwRisk = mockResult.details?.finalRecommendation === 'EMERGENCY' ? 'critical' : mockResult.details?.finalRecommendation === 'SEE_DOCTOR' ? 'warning' : 'normal'
+          saveToCHW('WoundTracker', mockResult.summary, chwRisk, mockResult)
+          
           if (localStorage.getItem('visiondx_autopilot') === 'active') {
             window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'wound', result: saved } }))
           }
@@ -382,6 +390,9 @@ Our Computer Vision segmentation pipeline has extracted these exact physical met
           const saved = saveResult('wound', resultData)
           setCurrentResult(saved)
           loadTimeline()
+          
+          const chwRisk = recommendation === 'EMERGENCY' ? 'critical' : recommendation === 'SEE_DOCTOR' ? 'warning' : 'normal'
+          saveToCHW('WoundTracker', resultData.summary, chwRisk, resultData)
           
           if (localStorage.getItem('visiondx_autopilot') === 'active') {
             window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'wound', result: saved } }))

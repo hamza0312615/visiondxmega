@@ -76,14 +76,14 @@ export function getWhatsAppConfig() {
     const parsed = data ? JSON.parse(data) : {}
     return {
       doctorPhone: parsed.doctorPhone || '923001234567',
-      phone: parsed.phone || '14155238886',
-      joinCode: parsed.joinCode || 'join flag-none'
+      phone: '15556734869',
+      joinCode: ''
     }
   } catch {
     return {
       doctorPhone: '923001234567',
-      phone: '14155238886',
-      joinCode: 'join flag-none'
+      phone: '15556734869',
+      joinCode: ''
     }
   }
 }

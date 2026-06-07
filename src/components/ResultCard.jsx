@@ -4,6 +4,7 @@ import { formatTime, saveRiskLog, saveHeatmapEntry, getHeatmapOptIn } from '../u
 import { analyzeText } from '../utils/groqApi'
 import { translateText } from '../utils/translationService'
 import { usePrintReport } from '../hooks/usePrintReport'
+import { speakText, cancelSpeech } from '../utils/ttsService'
 
 const getLocalTranslation = (type, langCode, text, details) => {
   const isUr = langCode === 'ur-PK'
@@ -97,16 +98,8 @@ export default function ResultCard({ data, onDelete, isHistory = false }) {
   const { printReport } = usePrintReport()
 
   useEffect(() => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.getVoices();
-      window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
-      };
-    }
     return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel()
-      }
+      cancelSpeech()
     }
   }, [])
 
@@ -191,13 +184,8 @@ export default function ResultCard({ data, onDelete, isHistory = false }) {
   }
 
   const handleSpeak = async () => {
-    if (!('speechSynthesis' in window)) {
-      alert('Speech synthesis is not supported in this browser.')
-      return
-    }
-
     if (speaking) {
-      window.speechSynthesis.cancel()
+      cancelSpeech()
       setSpeaking(false)
       return
     }
@@ -207,92 +195,72 @@ export default function ResultCard({ data, onDelete, isHistory = false }) {
 
     const cleanText = textToSpeak.replace(/\*\*/g, '').replace(/[-*]/g, '')
 
-    const speakWithVoice = (text, langCode) => {
-      window.speechSynthesis.cancel()
-      const utterance = new SpeechSynthesisUtterance(text)
-      
-      // If we are speaking Roman Urdu, we use standard English voice
-      const targetLangCode = langCode === 'ur-roman' ? 'en-US' : langCode
-      utterance.lang = targetLangCode
-      utterance.rate = langCode === 'ur-roman' ? 0.88 : 0.95 // slightly slower for Roman Urdu to sound natural
-
-      const voices = window.speechSynthesis.getVoices()
-      let bestVoice = voices.find(v => v.lang.toLowerCase() === targetLangCode.toLowerCase()) ||
-                       voices.find(v => v.lang.toLowerCase().startsWith(targetLangCode.split('-')[0].toLowerCase()))
-
-      if (langCode === 'ur-PK') {
-        bestVoice = voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu')) || bestVoice
-      } else if (langCode === 'hi-IN') {
-        bestVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi') || v.name.includes('Google ID')) || bestVoice
-      } else if (langCode === 'ar-SA') {
-        bestVoice = voices.find(v => v.lang.includes('ar') || v.name.includes('Arabic')) || bestVoice
-      }
-
-      if (bestVoice) {
-        utterance.voice = bestVoice
-      }
-
-      utterance.onstart = () => setSpeaking(true)
-      utterance.onend = () => setSpeaking(false)
-      utterance.onerror = () => setSpeaking(false)
-
-      window.speechSynthesis.speak(utterance)
+    const playTtsSpeech = (text, langCode) => {
+      speakText(text, langCode, {
+        onStart: () => setSpeaking(true),
+        onEnd: () => setSpeaking(false),
+        onError: () => setSpeaking(false)
+      })
     }
 
+    const hasElevenLabsKey = !!(import.meta.env.VITE_ELEVENLABS_API_KEY || localStorage.getItem('visiondx_elevenlabs_key'))
+
     if (speechLang !== 'en-US') {
-      const voices = window.speechSynthesis.getVoices()
-      const hasVoice = (langKey) => !!voices.find(v => v.lang.toLowerCase().includes(langKey.toLowerCase()) || v.name.toLowerCase().includes(langKey.toLowerCase()))
-
-      const isUrdu = speechLang === 'ur-PK'
-      const isHindi = speechLang === 'hi-IN'
-      const isArabic = speechLang === 'ar-SA'
-      const isBengali = speechLang === 'bn-BD'
-      const isPunjabi = speechLang === 'pa-IN'
-
-      const voiceMissing = (isUrdu && !hasVoice('ur')) ||
-                           (isHindi && !hasVoice('hi')) ||
-                           (isArabic && !hasVoice('ar')) ||
-                           (isBengali && !hasVoice('bn')) ||
-                           (isPunjabi && !hasVoice('pa'))
-
-      // If the native speech voice is missing, dynamically speak and translate into Roman Urdu
       let targetLang = speechLang
-      if (voiceMissing && speechLang !== 'ur-roman') {
-        targetLang = 'ur-roman'
-        const languageNames = {
-          'ur-PK': 'Urdu',
-          'hi-IN': 'Hindi',
-          'pa-IN': 'Punjabi',
-          'ar-SA': 'Arabic',
-          'bn-BD': 'Bengali'
+      let voiceMissing = false
+
+      if (!hasElevenLabsKey) {
+        if ('speechSynthesis' in window) {
+          const voices = window.speechSynthesis.getVoices()
+          const hasVoice = (langKey) => !!voices.find(v => v.lang.toLowerCase().includes(langKey.toLowerCase()) || v.name.toLowerCase().includes(langKey.toLowerCase()))
+
+          const isUrdu = speechLang === 'ur-PK'
+          const isHindi = speechLang === 'hi-IN'
+          const isArabic = speechLang === 'ar-SA'
+          const isBengali = speechLang === 'bn-BD'
+          const isPunjabi = speechLang === 'pa-IN'
+
+          voiceMissing = (isUrdu && !hasVoice('ur')) ||
+                         (isHindi && !hasVoice('hi')) ||
+                         (isArabic && !hasVoice('ar')) ||
+                         (isBengali && !hasVoice('bn')) ||
+                         (isPunjabi && !hasVoice('pa'))
         }
-        const missingLang = languageNames[speechLang] || speechLang
-        setVoiceAlert(`Note: Native system voice for ${missingLang} was not found on your device. Speech is falling back to phonetic Roman Urdu.`)
+
+        if (voiceMissing && speechLang !== 'ur-roman') {
+          targetLang = 'ur-roman'
+          const languageNames = {
+            'ur-PK': 'Urdu',
+            'hi-IN': 'Hindi',
+            'pa-IN': 'Punjabi',
+            'ar-SA': 'Arabic',
+            'bn-BD': 'Bengali'
+          }
+          const missingLang = languageNames[speechLang] || speechLang
+          setVoiceAlert(`Note: Native system voice for ${missingLang} was not found on your device. Speech is falling back to phonetic Roman Urdu.`)
+        } else {
+          setVoiceAlert('')
+        }
       } else {
         setVoiceAlert('')
       }
 
       if (translatedTexts[targetLang]) {
-        speakWithVoice(translatedTexts[targetLang], targetLang)
+        playTtsSpeech(translatedTexts[targetLang], targetLang)
       } else {
         setTranslating(true)
-        let targetLangCode = targetLang
         try {
           let prompt = ''
           let translated = null
 
           if (targetLang === 'ur-roman') {
-            // Fallback translation to Roman Urdu because native voice is missing!
-            targetLangCode = 'ur-roman'
             prompt = `You are a professional medical translator. Translate the following clinical report into highly conversational, friendly, and clear Roman Urdu (Urdu language written in standard English/Latin letters, e.g., "Aap ki skin report ke mutabik sab theek hai. Kisi fikar ki baat nahi hai"). Use simple everyday phrases. Keep it natural, easy to read aloud, and extremely concise. Only return the Roman Urdu transliterated text, without any intro or explanations.
             
-Text: "${cleanText}"`
+            Text: "${cleanText}"`
             translated = await analyzeText(prompt)
           } else {
-            // Attempt free, fast, keyless translation first (MyMemory/LibreTranslate)
             translated = await translateText(cleanText, targetLang)
 
-            // If MyMemory/LibreTranslate fails, use GenAI text translation fallback
             if (!translated) {
               const languageNames = {
                 'ur-PK': 'Urdu (اردو)',
@@ -306,11 +274,11 @@ Text: "${cleanText}"`
               if (targetLang === 'ur-PK') {
                 prompt = `You are a professional medical translator. Translate this clinical report into extremely clear, polite, and simple conversational Urdu (اردو) script. Use standard everyday Urdu words that are very easy to understand and speak aloud. Avoid difficult or archaic Persian/Arabic medical vocabulary (for example, use 'bukhār' instead of 'tap-e-shuda', 'jild' instead of 'poast', 'āṅkh' instead of 'chashm'). Keep it concise. Only return the translated Urdu script, without any intro or explanations.
                 
-Text: "${cleanText}"`
+                Text: "${cleanText}"`
               } else {
                 prompt = `Translate the following medical assessment/report text into clear, simple, conversational ${targetLangName} suitable for speech synthesis (text-to-speech). Maintain the professional medical advice but make it very natural when spoken aloud. Only return the translated text without any introduction, explanations, or metadata. Keep it concise.
                 
-Text: "${cleanText}"`
+                Text: "${cleanText}"`
               }
               translated = await analyzeText(prompt)
             }
@@ -318,22 +286,22 @@ Text: "${cleanText}"`
 
           if (translated) {
             setTranslatedTexts(prev => ({ ...prev, [targetLang]: translated }))
-            speakWithVoice(translated, targetLangCode)
+            playTtsSpeech(translated, targetLang)
           } else {
-            const fallbackLocal = getLocalTranslation(type, targetLangCode, cleanText, details)
-            speakWithVoice(fallbackLocal, targetLangCode)
+            const fallbackLocal = getLocalTranslation(type, targetLang, cleanText, details)
+            playTtsSpeech(fallbackLocal, targetLang)
           }
         } catch (err) {
           console.error('Translation for speech synthesis failed, using local fallback:', err)
-          const fallbackLocal = getLocalTranslation(type, targetLangCode, cleanText, details)
-          speakWithVoice(fallbackLocal, targetLangCode)
+          const fallbackLocal = getLocalTranslation(type, targetLang, cleanText, details)
+          playTtsSpeech(fallbackLocal, targetLang)
         } finally {
           setTranslating(false)
         }
       }
     } else {
       setVoiceAlert('')
-      speakWithVoice(cleanText, 'en-US')
+      playTtsSpeech(cleanText, 'en-US')
     }
   }
 

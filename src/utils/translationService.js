@@ -4,15 +4,7 @@
 
 const LANG_MAPPING = {
   'ur-PK': 'ur',
-  'hi-IN': 'hi',
-  'pa-IN': 'pa',
-  'ar-SA': 'ar',
-  'bn-BD': 'bn',
   'ur': 'ur',
-  'hi': 'hi',
-  'pa': 'pa',
-  'ar': 'ar',
-  'bn': 'bn',
   'en-US': 'en',
   'en': 'en'
 };
@@ -22,7 +14,7 @@ const LANG_MAPPING = {
  * Uses MyMemory API as the primary translator and LibreTranslate (Argos) as a fallback.
  * 
  * @param {string} text The text to translate
- * @param {string} targetLangCode Locale code for the target language (e.g. 'ur-PK')
+ * @param {string} targetLangCode Locale code for the target language (e.g. 'ur')
  * @param {string} sourceLangCode Locale code for the source language (default 'en')
  * @returns {Promise<string|null>} The translated text, or null if all calls fail.
  */

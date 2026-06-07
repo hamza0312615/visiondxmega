@@ -25,6 +25,11 @@ import SuggestMedicine from './pages/SuggestMedicine'
 import Timeline from './pages/Timeline'
 import Heatmap from './pages/Heatmap'
 
+// CHW Mode
+import CHWLogin from './pages/CHWLogin'
+import CHWDashboard from './pages/CHWDashboard'
+import CHWReportPreview from './pages/CHWReportPreview'
+
 export default function App() {
   const [user, setUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -91,6 +96,11 @@ export default function App() {
             <Route path="/suggest-medicine" element={<SuggestMedicine />} />
             <Route path="/timeline" element={<Timeline />} />
             <Route path="/heatmap" element={<Heatmap />} />
+            
+            {/* CHW Mode Routes */}
+            <Route path="/chw/login" element={<CHWLogin />} />
+            <Route path="/chw/dashboard" element={<CHWDashboard />} />
+            <Route path="/chw/report-preview" element={<CHWReportPreview />} />
           </Routes>
         </main>
 

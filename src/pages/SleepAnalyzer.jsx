@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { analyzeText, transcribeAudio } from '../utils/groqApi'
 import { saveResult, getHistoryByType, formatTime, isDemoMode, setDemoMode, getDemoData, getApiKey } from '../utils/localStorage'
+import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
 
 export default function SleepAnalyzer() {
+  const { saveToCHW } = useSaveToCHW()
   const [activeTab, setActiveTab] = useState('form') // 'form' or 'audio'
 
   // Form State
@@ -196,6 +198,10 @@ export default function SleepAnalyzer() {
 
     const saved = saveResult('sleep', resultData)
     setCurrentResult(saved)
+    
+    const chwRisk = urgency === 'EMERGENCY' ? 'critical' : urgency === 'SEE_DOCTOR' ? 'warning' : 'normal'
+    saveToCHW('SleepAnalyzer', resultData.summary, chwRisk, resultData)
+    
     loadWeeklyHistory()
     setLoading(false)
 

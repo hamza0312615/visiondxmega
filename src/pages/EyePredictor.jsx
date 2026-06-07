@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { analyzeImage } from '../utils/groqApi'
 import { saveResult, isDemoMode, setDemoMode, getApiKey } from '../utils/localStorage'
+import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import diseaseData from '../data/disease_data.json'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
@@ -9,6 +10,7 @@ import WebcamCapture from '../components/WebcamCapture'
 import Skeleton from '../components/Skeleton'
 
 export default function EyePredictor() {
+  const { saveToCHW } = useSaveToCHW()
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const [activeTab, setActiveTab] = useState('upload') // 'upload' or 'webcam'
@@ -157,6 +159,9 @@ export default function EyePredictor() {
 
       const saved = saveResult('eye', resultData)
       setCurrentResult(saved)
+
+      const chwRisk = urgency === 'EMERGENCY' ? 'critical' : urgency === 'SEE_DOCTOR' ? 'warning' : 'normal'
+      saveToCHW('EyePredictor', resultData.summary, chwRisk, resultData)
 
       if (localStorage.getItem('visiondx_autopilot') === 'active') {
         window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'eye', result: saved } }))

@@ -213,6 +213,7 @@ export async function analyzeText(prompt, apiKey) {
           content: prompt,
         },
       ],
+      response_format: prompt.includes('JSON format') ? { type: "json_object" } : undefined,
       max_tokens: 1536,
       temperature: 0.3,
     }),

@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const twilio = require('twilio');
+const googleTTS = require('google-tts-api');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,7 +31,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     timestamp: new Date().toISOString(),
-    provider: process.env.WHATSAPP_PROVIDER || 'twilio (default)'
+    provider: process.env.WHATSAPP_PROVIDER || 'wasender'
   });
 });
 
@@ -65,7 +65,7 @@ ${cleanAdvice}
 ----------------------------------------
 ⚠️ *Important Medical Disclaimer:* VisionDX recommendations are computer-generated simulations. Always consult a certified healthcare practitioner.`;
 
-  const provider = (process.env.WHATSAPP_PROVIDER || 'twilio').toLowerCase();
+  const provider = (process.env.WHATSAPP_PROVIDER || 'wasender').toLowerCase();
 
   try {
     if (provider === 'meta') {
@@ -108,32 +108,36 @@ ${cleanAdvice}
       });
 
     } else {
-      // 2. Twilio WhatsApp Sandbox / Official API Implementation (Default)
-      const sid = process.env.TWILIO_ACCOUNT_SID;
-      const token = process.env.TWILIO_AUTH_TOKEN;
-      const fromNumber = process.env.TWILIO_FROM_NUMBER || '+14155238886'; // default Twilio Sandbox number
+      // 2. WaSender API Implementation (Default)
+      const apiKey = process.env.WASENDER_API_KEY;
+      const apiUrl = process.env.WASENDER_URL; // e.g., https://wasender.domain.com/api/send
 
-      if (!sid || !token) {
-        throw new Error('Twilio credentials missing (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN).');
+      if (!apiKey || !apiUrl) {
+        throw new Error('WaSender credentials missing (WASENDER_API_KEY / WASENDER_URL). Please set them in your .env file.');
       }
 
-      const client = twilio(sid, token);
-      
-      const twilioFrom = fromNumber.startsWith('whatsapp:') ? fromNumber : `whatsapp:${fromNumber}`;
-      const twilioTo = formattedPhone.startsWith('whatsapp:') ? formattedPhone : `whatsapp:${formattedPhone}`;
+      const waPhone = formattedPhone.replace('+', ''); // WaSender typically expects numbers without '+'
 
-      console.log(`[Twilio API] Dispatching message from ${twilioFrom} to ${twilioTo}`);
-      const message = await client.messages.create({
-        body: messageBody,
-        from: twilioFrom,
-        to: twilioTo
+      // Using the user-provided WaSender API structure
+      const payload = {
+        to: formattedPhone, // WaSender wants phone number with or without '+' (user provided +92 305...)
+        text: messageBody
+      };
+
+      console.log(`[WaSender API] Dispatching message to ${formattedPhone} via ${apiUrl}`);
+      
+      const response = await axios.post(apiUrl, payload, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
       });
 
-      console.log('[Twilio API] Dispatch successful SID:', message.sid);
+      console.log('[WaSender API] Dispatch successful:', response.data);
       return res.status(200).json({
         success: true,
-        message: 'Triage alert dispatched successfully via Twilio API.',
-        sid: message.sid
+        message: 'Triage alert dispatched successfully via WaSender API.',
+        response: response.data
       });
     }
   } catch (err) {
@@ -141,12 +145,37 @@ ${cleanAdvice}
     return res.status(500).json({
       success: false,
       error: 'Failed to dispatch WhatsApp triage report.',
-      message: err.response?.data?.error?.message || err.message
+      message: err.response?.data?.message || err.response?.data?.error || err.message
     });
+  }
+});
+
+// Google TTS Proxy
+app.get('/api/tts', async (req, res) => {
+  const { text, lang } = req.query;
+  if (!text) {
+    return res.status(400).json({ error: 'Text is required' });
+  }
+  
+  try {
+    const targetLang = lang || 'en';
+    const url = googleTTS.getAudioUrl(text, {
+      lang: targetLang,
+      slow: false,
+      host: 'https://translate.google.com',
+    });
+    
+    // Fetch the audio buffer and pipe it back
+    const audioResponse = await axios.get(url, { responseType: 'arraybuffer' });
+    res.set('Content-Type', 'audio/mpeg');
+    res.send(audioResponse.data);
+  } catch (error) {
+    console.error('TTS Proxy Error:', error);
+    res.status(500).json({ error: 'Failed to generate TTS' });
   }
 });
 
 app.listen(PORT, () => {
   console.log(`[VisionDX Backend] Server running at http://localhost:${PORT}`);
-  console.log(`[VisionDX Backend] Configured Provider: ${process.env.WHATSAPP_PROVIDER || 'twilio'}`);
+  console.log(`[VisionDX Backend] Configured Provider: ${process.env.WHATSAPP_PROVIDER || 'wasender'}`);
 });

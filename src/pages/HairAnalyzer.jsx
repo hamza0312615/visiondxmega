@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { analyzeImage } from '../utils/groqApi'
 import { saveResult, isDemoMode, setDemoMode, getApiKey } from '../utils/localStorage'
+import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -8,6 +9,7 @@ import WebcamCapture from '../components/WebcamCapture'
 import Skeleton from '../components/Skeleton'
 
 export default function HairAnalyzer() {
+  const { saveToCHW } = useSaveToCHW()
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const [activeTab, setActiveTab] = useState('upload') // 'upload' or 'webcam'
@@ -158,6 +160,9 @@ export default function HairAnalyzer() {
 
       const saved = saveResult('hair', resultData)
       setCurrentResult(saved)
+
+      const chwRisk = urgency === 'EMERGENCY' ? 'critical' : urgency === 'SEE_DOCTOR' ? 'warning' : 'normal'
+      saveToCHW('HairAnalyzer', resultData.summary, chwRisk, resultData)
 
       if (localStorage.getItem('visiondx_autopilot') === 'active') {
         window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'hair', result: saved } }))

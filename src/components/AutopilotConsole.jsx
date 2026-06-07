@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { speakText, cancelSpeech } from '../utils/ttsService'
 
 const STEPS = [
   { id: 'eye', name: '👁️ Eye Disease Predictor', path: '/eye-predictor' },
@@ -112,11 +113,9 @@ export default function AutopilotConsole() {
     }
 
     return () => {
-      window.removeEventListener('autopilot-start', handleStart)
-      window.removeEventListener('autopilot-stop', handleStop)
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel()
-      }
+      window.removeEventListener('visiondx-preset-triggered', handleStart)
+      window.removeEventListener('visiondx-preset-triggered', handleStop)
+      cancelSpeech()
     }
   }, [])
 
@@ -156,12 +155,7 @@ export default function AutopilotConsole() {
   }, [isActive, currentStepIndex])
 
   const speakNarrative = (stepId) => {
-    if (!('speechSynthesis' in window)) {
-      handleStepComplete()
-      return
-    }
-
-    window.speechSynthesis.cancel()
+    cancelSpeech()
     setSpeaking(true)
     setCurrentLanguage('en')
 
@@ -171,58 +165,47 @@ export default function AutopilotConsole() {
       return
     }
 
-    // 1. Play English
-    const enUtterance = new SpeechSynthesisUtterance(narrative.en)
-    enUtterance.lang = 'en-US'
-    enUtterance.rate = 1.0
-    speechUtteranceRef.current = enUtterance
+    speakText(narrative.en, 'en-US', {
+      onStart: () => {
+        setSpeaking(true)
+        setCurrentLanguage('en')
+      },
+      onEnd: () => {
+        const hasElevenLabsKey = !!(import.meta.env.VITE_ELEVENLABS_API_KEY || localStorage.getItem('visiondx_elevenlabs_key'))
+        let targetText = narrative.ur
+        let targetLang = 'ur-PK'
 
-    enUtterance.onend = () => {
-      // 2. Play Urdu immediately after
-      setCurrentLanguage('ur')
-      
-      const voices = window.speechSynthesis.getVoices()
-      const urVoice = voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu')) ||
-                      voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi'))
+        if (!hasElevenLabsKey) {
+          if ('speechSynthesis' in window) {
+            const voices = window.speechSynthesis.getVoices()
+            const hasUrduVoice = voices.some(v => v.lang.startsWith('ur') || v.lang.startsWith('ar') || v.name.includes('Urdu'))
+            if (!hasUrduVoice) {
+              targetText = narrative.roman
+              targetLang = 'ur-roman'
+            }
+          }
+        }
 
-      let utteranceText = narrative.ur
-      let targetLangCode = 'ur-PK'
-
-      if (!urVoice) {
-        // Fallback to Roman Urdu using English voice
-        utteranceText = narrative.roman
-        targetLangCode = 'en-US'
-      }
-
-      const urUtterance = new SpeechSynthesisUtterance(utteranceText)
-      urUtterance.lang = targetLangCode
-      urUtterance.rate = urVoice ? 0.95 : 0.88
-
-      if (urVoice) {
-        urUtterance.voice = urVoice
-      } else {
-        const enVoice = voices.find(v => v.lang.startsWith('en'))
-        if (enVoice) urUtterance.voice = enVoice
-      }
-
-      urUtterance.onend = () => {
+        speakText(targetText, targetLang, {
+          onStart: () => {
+            setSpeaking(true)
+            setCurrentLanguage('ur')
+          },
+          onEnd: () => {
+            setSpeaking(false)
+            handleStepComplete()
+          },
+          onError: () => {
+            setSpeaking(false)
+            handleStepComplete()
+          }
+        })
+      },
+      onError: () => {
         setSpeaking(false)
         handleStepComplete()
       }
-      urUtterance.onerror = () => {
-        setSpeaking(false)
-        handleStepComplete()
-      }
-
-      window.speechSynthesis.speak(urUtterance)
-    }
-
-    enUtterance.onerror = () => {
-      setSpeaking(false)
-      handleStepComplete()
-    }
-
-    window.speechSynthesis.speak(enUtterance)
+    })
   }
 
   const handleStepComplete = () => {
@@ -244,9 +227,7 @@ export default function AutopilotConsole() {
     setSpeaking(false)
     localStorage.removeItem('visiondx_autopilot')
     localStorage.removeItem('visiondx_autopilot_step')
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-    }
+    cancelSpeech()
   }
 
   const handleTogglePause = () => {
@@ -257,7 +238,6 @@ export default function AutopilotConsole() {
       } else if (statusMessage.startsWith('📢')) {
         speakNarrative(STEPS[currentStepIndex].id)
       } else {
-        // Force scan restart
         const step = STEPS[currentStepIndex]
         setStatusMessage(`🤖 AUTOPILOT: Scanning ${step.name}...`)
         navigate(step.path)
@@ -265,17 +245,13 @@ export default function AutopilotConsole() {
     } else {
       setIsPaused(true)
       clearTimeout(timerRef.current)
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel()
-      }
+      cancelSpeech()
       setSpeaking(false)
     }
   }
 
   const handleSkipStep = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-    }
+    cancelSpeech()
     setSpeaking(false)
     handleStepComplete()
   }

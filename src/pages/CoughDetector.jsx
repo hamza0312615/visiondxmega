@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import { transcribeAudio, analyzeText } from '../utils/groqApi'
 import { saveResult, isDemoMode, setDemoMode, getDemoData, getApiKey } from '../utils/localStorage'
+import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
 
 export default function CoughDetector() {
+  const { saveToCHW } = useSaveToCHW()
   const [recording, setRecording] = useState(false)
   const [timeLeft, setTimeLeft] = useState(5)
   const [audioFile, setAudioFile] = useState(null)
@@ -178,6 +180,9 @@ export default function CoughDetector() {
 
       const saved = saveResult('cough', resultData)
       setCurrentResult(saved)
+
+      const chwRisk = urgency === 'EMERGENCY' ? 'critical' : urgency === 'SEE_DOCTOR' ? 'warning' : 'normal'
+      saveToCHW('CoughDetector', resultData.summary, chwRisk, resultData)
 
       if (localStorage.getItem('visiondx_autopilot') === 'active') {
         window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'cough', result: saved } }))

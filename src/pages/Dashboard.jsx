@@ -33,7 +33,8 @@ const dashboardTranslations = {
     noScansDesc: "You haven't performed any diagnostic analyses yet. Choose one of the tools above to run your first AI scan!",
     viewFullReport: "View Full Report",
     analysis: "Analysis",
-    recentActivityPlaceholder: "AI assessment completed."
+    recentActivityPlaceholder: "AI assessment completed.",
+    chwBtn: "Community Health Worker Platform"
   },
   ur: {
     heroTitle: "VisionDX میگا پلیٹ فارم",
@@ -63,13 +64,14 @@ const dashboardTranslations = {
     noScansDesc: "آپ نے ابھی تک کوئی تشخیصی تجزیہ نہیں کیا ہے۔ اپنا پہلا اے آئی اسکین چلانے کے لیے اوپر کے ٹولز میں سے ایک کا انتخاب کریں!",
     viewFullReport: "مکمل رپورٹ دیکھیں",
     analysis: "کا تجزیہ",
-    recentActivityPlaceholder: "اے آئی جائزہ مکمل ہو گیا۔"
+    recentActivityPlaceholder: "اے آئی جائزہ مکمل ہو گیا۔",
+    chwBtn: "کمیونٹی ہیلتھ ورکر پلیٹ فارم"
   }
 }
 
 export default function Dashboard() {
   const [recentScans, setRecentScans] = useState([])
-  const [whatsapp, setWhatsapp] = useState({ phone: '14155238886', joinCode: 'join flag-none' })
+  const [whatsapp, setWhatsapp] = useState({ phone: '15556734869', joinCode: '' })
   const navigate = useNavigate()
   const lang = getSiteLanguage()
   const t = dashboardTranslations[lang] || dashboardTranslations.en
@@ -236,6 +238,9 @@ export default function Dashboard() {
             </button>
             <Link to="/history" className="btn-secondary py-3.5 px-8 text-base">
               <span>📋</span> {t.historyBtn}
+            </Link>
+            <Link to="/chw/login" className="px-8 py-3.5 rounded-2xl border-2 border-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 font-extrabold text-base transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] hover:-translate-y-1">
+              <span className="text-xl">🧳</span> {t.chwBtn}
             </Link>
           </div>
         </div>
