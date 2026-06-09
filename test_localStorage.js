@@ -35,6 +35,10 @@ global.window = {
   dispatchEvent(event) {}
 }
 
+// Mock Date.now to ensure unique IDs in rapid succession
+let mockNow = Date.now();
+global.Date.now = () => mockNow++;
+
 // 2. Import Module
 import {
   isDemoMode,

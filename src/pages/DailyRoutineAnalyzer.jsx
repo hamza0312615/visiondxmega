@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { analyzeText } from '../utils/groqApi'
-import { saveResult, isDemoMode, setDemoMode, getDemoData, getApiKey } from '../utils/localStorage'
+import { saveResult, isDemoMode, setDemoMode, getDemoData } from '../utils/localStorage'
+import { hasAnyApiKey, triggerFallbackMode } from '../utils/fallback'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -114,16 +115,13 @@ export default function DailyRoutineAnalyzer() {
     setCurrentResult(null)
 
     // Preset simulated fallback mode if API keys are missing
-    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
-    if (!hasKey) {
-      setTimeout(() => {
-        const saved = saveResult('routine', demoPresets.routine[0].fallbackResult)
-        setCurrentResult(saved)
-        setLoading(false)
-        if (localStorage.getItem('visiondx_autopilot') === 'active') {
-          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'routine', result: saved } }))
-        }
-      }, 1500)
+    if (!hasAnyApiKey()) {
+      triggerFallbackMode({
+        type: 'routine',
+        fallbackResult: demoPresets.routine[0].fallbackResult,
+        setLoading,
+        setCurrentResult
+      })
       return
     }
 
