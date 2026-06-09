@@ -57,7 +57,7 @@ export function clearHistory() {
  * Get API key from localStorage or environment variables
  */
 export function getApiKey() {
-  return localStorage.getItem(API_KEY) || import.meta.env.VITE_GROQ_API_KEY || ''
+  return localStorage.getItem(API_KEY) || (import.meta.env && import.meta.env.VITE_GROQ_API_KEY) || ''
 }
 
 /**
