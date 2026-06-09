@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { transcribeAudio, analyzeText } from '../utils/groqApi'
-import { saveResult, getWhatsAppConfig, getApiKey } from '../utils/localStorage'
+import { saveResult, getWhatsAppConfig } from '../utils/localStorage'
+import { hasAnyApiKey, handleSimulationFallback } from '../utils/analyzerUtils'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -143,17 +144,14 @@ export default function VoiceDoc() {
     setCurrentResult(null)
 
     // Preset simulated fallback mode if API keys are missing
-    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
-    if (audioBlob && !hasKey) {
-      setTimeout(() => {
-        const saved = saveResult('voicedoc', demoPresets.voicedoc[0].fallbackResult)
-        setCurrentResult(saved)
-        setLoading(false)
-        speakText(saved.speechText, language)
-        if (localStorage.getItem('visiondx_autopilot') === 'active') {
-          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'voicedoc', result: saved } }))
-        }
-      }, 1500)
+    if (audioBlob && !hasAnyApiKey()) {
+      handleSimulationFallback({
+        type: 'voicedoc',
+        fallbackResult: demoPresets.voicedoc[0].fallbackResult,
+        setLoading,
+        setCurrentResult,
+        onComplete: (saved) => speakText(saved.speechText, language)
+      })
       return
     }
 
@@ -253,17 +251,14 @@ Instructions:
     setCurrentResult(null)
 
     // Preset simulated fallback mode if API keys are missing
-    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
-    if (!hasKey) {
-      setTimeout(() => {
-        const saved = saveResult('voicedoc', demoPresets.voicedoc[0].fallbackResult)
-        setCurrentResult(saved)
-        setLoading(false)
-        speakText(saved.speechText, language)
-        if (localStorage.getItem('visiondx_autopilot') === 'active') {
-          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'voicedoc', result: saved } }))
-        }
-      }, 1500)
+    if (!hasAnyApiKey()) {
+      handleSimulationFallback({
+        type: 'voicedoc',
+        fallbackResult: demoPresets.voicedoc[0].fallbackResult,
+        setLoading,
+        setCurrentResult,
+        onComplete: (saved) => speakText(saved.speechText, language)
+      })
       return
     }
 
