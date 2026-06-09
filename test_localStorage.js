@@ -35,6 +35,10 @@ global.window = {
   dispatchEvent(event) {}
 }
 
+// Mock Date.now() to return unique timestamps
+let mockNow = 1717912800000; // 2024-06-09
+global.Date.now = () => mockNow++;
+
 // 2. Import Module
 import {
   isDemoMode,
