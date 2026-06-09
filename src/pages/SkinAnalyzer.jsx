@@ -129,9 +129,10 @@ export default function SkinAnalyzer() {
       const skinConditions = diseaseData.skin || {}
       let matchedCondition = null
       let matchedKey = ''
+      const lowerCaseResponse = aiResponse.toLowerCase()
 
       for (const [key, data] of Object.entries(skinConditions)) {
-        if (aiResponse.toLowerCase().includes(key.toLowerCase())) {
+        if (lowerCaseResponse.includes(key.toLowerCase())) {
           matchedCondition = data
           matchedKey = key
           break

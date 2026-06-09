@@ -156,12 +156,13 @@ export default function CoughDetector() {
 3) Provide a clear assessment of severity and urgency. End your response with exactly one of these urgency flags: NORMAL, SEE_DOCTOR, or EMERGENCY.`
 
       const aiResponse = await analyzeText(prompt)
+      const lowerCaseResponse = aiResponse.toLowerCase()
 
       let coughType = 'Unspecified'
-      if (aiResponse.toLowerCase().includes('dry')) coughType = 'Dry Cough'
-      else if (aiResponse.toLowerCase().includes('wet')) coughType = 'Wet / Productive Cough'
-      else if (aiResponse.toLowerCase().includes('whoop')) coughType = 'Whooping Cough'
-      else if (aiResponse.toLowerCase().includes('bark')) coughType = 'Barking Cough'
+      if (lowerCaseResponse.includes('dry')) coughType = 'Dry Cough'
+      else if (lowerCaseResponse.includes('wet')) coughType = 'Wet / Productive Cough'
+      else if (lowerCaseResponse.includes('whoop')) coughType = 'Whooping Cough'
+      else if (lowerCaseResponse.includes('bark')) coughType = 'Barking Cough'
 
       let urgency = 'SEE_DOCTOR'
       if (aiResponse.includes('EMERGENCY')) urgency = 'EMERGENCY'

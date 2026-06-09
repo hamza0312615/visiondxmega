@@ -207,11 +207,12 @@ Our Computer Vision segmentation pipeline has extracted these exact physical met
 
       try {
         const aiResponse = await analyzeImage(activeFile, prompt)
+        const lowerCaseResponse = aiResponse.toLowerCase()
         
         let healingStatus = 'Analyzing...'
-        if (aiResponse.toLowerCase().includes('healing normally') || aiResponse.toLowerCase().includes('healing well') || aiResponse.toLowerCase().includes('healthy')) healingStatus = 'Healing Well'
-        else if (aiResponse.toLowerCase().includes('slowly') || aiResponse.toLowerCase().includes('slow')) healingStatus = 'Healing Slowly'
-        else if (aiResponse.toLowerCase().includes('infection') || aiResponse.toLowerCase().includes('ssi')) healingStatus = 'Signs of Infection'
+        if (lowerCaseResponse.includes('healing normally') || lowerCaseResponse.includes('healing well') || lowerCaseResponse.includes('healthy')) healingStatus = 'Healing Well'
+        else if (lowerCaseResponse.includes('slowly') || lowerCaseResponse.includes('slow')) healingStatus = 'Healing Slowly'
+        else if (lowerCaseResponse.includes('infection') || lowerCaseResponse.includes('ssi')) healingStatus = 'Signs of Infection'
 
         let recommendation = 'HOME_CARE'
         if (aiResponse.includes('EMERGENCY')) recommendation = 'EMERGENCY'
@@ -352,11 +353,12 @@ Our Computer Vision segmentation pipeline has extracted these exact physical met
 
         try {
           const aiResponse = await analyzeImage(activeFile, prompt)
+          const lowerCaseResponse = aiResponse.toLowerCase()
           
           let healingStatus = 'Analyzing...'
-          if (aiResponse.toLowerCase().includes('healing normally') || aiResponse.toLowerCase().includes('healing well') || aiResponse.toLowerCase().includes('healthy')) healingStatus = 'Healing Well'
-          else if (aiResponse.toLowerCase().includes('slowly') || aiResponse.toLowerCase().includes('slow')) healingStatus = 'Healing Slowly'
-          else if (aiResponse.toLowerCase().includes('infection') || aiResponse.toLowerCase().includes('ssi')) healingStatus = 'Signs of Infection'
+          if (lowerCaseResponse.includes('healing normally') || lowerCaseResponse.includes('healing well') || lowerCaseResponse.includes('healthy')) healingStatus = 'Healing Well'
+          else if (lowerCaseResponse.includes('slowly') || lowerCaseResponse.includes('slow')) healingStatus = 'Healing Slowly'
+          else if (lowerCaseResponse.includes('infection') || lowerCaseResponse.includes('ssi')) healingStatus = 'Signs of Infection'
 
           let recommendation = 'HOME_CARE'
           if (aiResponse.includes('EMERGENCY')) recommendation = 'EMERGENCY'
