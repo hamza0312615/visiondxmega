@@ -1,6 +1,6 @@
-const STORAGE_KEY = 'visiondx_mega_history'
-const WHATSAPP_KEY = 'visiondx_whatsapp_config'
-const API_KEY = 'visiondx_api_key'
+export const STORAGE_KEY = 'visiondx_mega_history'
+export const WHATSAPP_KEY = 'visiondx_whatsapp_config'
+export const API_KEY = 'visiondx_api_key'
 
 /**
  * Save a scan result to localStorage
@@ -109,7 +109,7 @@ export function formatTime(isoString) {
   })
 }
 
-const SITE_LANG_KEY = 'visiondx_site_lang'
+export const SITE_LANG_KEY = 'visiondx_site_lang'
 
 export function getSiteLanguage() {
   return localStorage.getItem(SITE_LANG_KEY) || 'en'
@@ -149,10 +149,10 @@ export function setSiteLanguage(lang) {
   window.location.reload()
 }
 
-const IS_DEMO_KEY = 'visiondx_is_demo_mode'
-const RISK_LOG_KEY = 'visiondx_riskLog'
-const HEATMAP_DATA_KEY = 'visiondx_heatmapData'
-const HEATMAP_OPT_IN_KEY = 'visiondx_heatmapOptIn'
+export const IS_DEMO_KEY = 'visiondx_is_demo_mode'
+export const RISK_LOG_KEY = 'visiondx_riskLog'
+export const HEATMAP_DATA_KEY = 'visiondx_heatmapData'
+export const HEATMAP_OPT_IN_KEY = 'visiondx_heatmapOptIn'
 
 export function isDemoMode() {
   return localStorage.getItem(IS_DEMO_KEY) === 'true'
