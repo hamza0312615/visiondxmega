@@ -2,7 +2,7 @@
  * Unified Text-to-Speech (TTS) Service using ElevenLabs API with browser fallback.
  */
 
-import { getApiKey } from './localStorage'
+import { getApiKey } from './localStorage.js'
 
 // Rachel Multilingual Voice ID on ElevenLabs. High-quality and supports Urdu, Hindi, Arabic, Bengali, Punjabi, Spanish, French, etc.
 const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM' 
@@ -49,7 +49,7 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
   cancelSpeech()
 
   // Get ElevenLabs API Key from environment or localStorage
-  const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY || localStorage.getItem('visiondx_elevenlabs_key') || ''
+  const apiKey = (import.meta.env && import.meta.env.VITE_ELEVENLABS_API_KEY) || localStorage.getItem('visiondx_elevenlabs_key') || ''
 
   if (apiKey) {
     try {
@@ -105,7 +105,7 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
   if (langCode === 'ur-roman') {
     targetLangCode = 'hi' // Google TTS Hindi voice is excellent at reading Roman Urdu/Hindustani
   }
-  const backendUrl = import.meta.env.VITE_WA_BACKEND_URL || 'http://localhost:3001'
+  const backendUrl = (import.meta.env && import.meta.env.VITE_WA_BACKEND_URL) || 'http://localhost:3001'
   console.log(`Using Google TTS Proxy Fallback for: ${cleanText.substring(0, 40)}...`)
 
   // Google TTS has a ~200 char limit. We need to chunk the text.
