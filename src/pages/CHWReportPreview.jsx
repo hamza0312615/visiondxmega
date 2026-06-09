@@ -22,18 +22,20 @@ export default function CHWReportPreview() {
 
     const generateAllReports = async () => {
       setLoading(true);
-      const generated = [];
-      for (const p of patients) {
+      const reportPromises = patients.map(async (p) => {
         if (p.records && p.records.length > 0) {
           try {
             const text = await generateCHWReportText(p, p.records, worker?.name || 'CHW');
-            generated.push({ patient: p, text, status: 'pending' });
+            return { patient: p, text, status: 'pending' };
           } catch (error) {
-            generated.push({ patient: p, text: "Failed to generate report.", status: 'error' });
+            return { patient: p, text: "Failed to generate report.", status: 'error' };
           }
         }
-      }
-      setReports(generated);
+        return null;
+      });
+
+      const results = await Promise.all(reportPromises);
+      setReports(results.filter(r => r !== null));
       setLoading(false);
     };
 
@@ -43,11 +45,9 @@ export default function CHWReportPreview() {
   const handleSendAll = async () => {
     setSending(true);
     setStatusMsg('');
-    let successCount = 0;
     
-    for (let i = 0; i < reports.length; i++) {
-      const rep = reports[i];
-      if (rep.status === 'sent' || !rep.patient.phone) continue;
+    const sendPromises = reports.map(async (rep, i) => {
+      if (rep.status === 'sent' || !rep.patient.phone) return null;
       
       try {
         await sendWhatsAppReport(rep.patient, rep.text);
@@ -55,19 +55,22 @@ export default function CHWReportPreview() {
         // Update local state to show it's sent
         setReports(prev => {
           const newR = [...prev];
-          newR[i].status = 'sent';
+          newR[i] = { ...newR[i], status: 'sent' };
           return newR;
         });
-        successCount++;
+        return true;
       } catch (error) {
         setReports(prev => {
           const newR = [...prev];
-          newR[i].status = 'error';
-          newR[i].errorMsg = error.message;
+          newR[i] = { ...newR[i], status: 'error', errorMsg: error.message };
           return newR;
         });
+        return false;
       }
-    }
+    });
+
+    const results = await Promise.all(sendPromises);
+    const successCount = results.filter(r => r === true).length;
     
     setSending(false);
     setStatusMsg(`Successfully sent ${successCount} out of ${reports.length} reports.`);
