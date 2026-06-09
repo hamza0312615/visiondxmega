@@ -6,9 +6,9 @@ import {
   formatTime, 
   isDemoMode, 
   setDemoMode, 
-  getApiKey,
   deleteEntry
 } from '../utils/localStorage'
+import { hasAnyApiKey, handleSimulationFallback } from '../utils/analyzerUtils'
 import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
@@ -160,7 +160,6 @@ export default function WoundTracker() {
     setCurrentResult(null)
 
     const activePreset = forcePreset || presetData
-    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
     let cvMetrics = null
@@ -297,42 +296,40 @@ Our Computer Vision segmentation pipeline has extracted these exact physical met
         mockConfidence = 0.82
       }
 
-      if (activePreset && !hasKey) {
+      if (activePreset && !hasAnyApiKey()) {
         // No API keys + preset -> direct instant simulation
-        setTimeout(() => {
-          const mockResult = {
-            ...activePreset.fallbackResult,
-            cvArea: mockArea,
-            cvLength: mockLength,
-            cvWidth: mockWidth,
-            cvDepth: mockDepth,
-            cvHealingStage: mockStage,
-            cvConfidence: mockConfidence,
-            cvSegmentationUrl: mockSegmentation,
-            painLevel: painLevel,
-            dayNum: parseInt(dayNumber.replace('Day ', '')) || 1
-          }
+        const mockResult = {
+          ...activePreset.fallbackResult,
+          cvArea: mockArea,
+          cvLength: mockLength,
+          cvWidth: mockWidth,
+          cvDepth: mockDepth,
+          cvHealingStage: mockStage,
+          cvConfidence: mockConfidence,
+          cvSegmentationUrl: mockSegmentation,
+          painLevel: painLevel,
+          dayNum: parseInt(dayNumber.replace('Day ', '')) || 1
+        }
 
-          mockResult.details = {
-            ...mockResult.details,
-            detectedArea: `${mockArea.toFixed(1)} mm²`,
-            dimensions: `${mockLength.toFixed(1)} mm x ${mockWidth.toFixed(1)} mm`,
-            detectedDepth: `${mockDepth.toFixed(1)} mm`,
-            healingStage: mockStage
-          }
+        mockResult.details = {
+          ...mockResult.details,
+          detectedArea: `${mockArea.toFixed(1)} mm²`,
+          dimensions: `${mockLength.toFixed(1)} mm x ${mockWidth.toFixed(1)} mm`,
+          detectedDepth: `${mockDepth.toFixed(1)} mm`,
+          healingStage: mockStage
+        }
 
-          const saved = saveResult('wound', mockResult)
-          setCurrentResult(saved)
-          setLoading(false)
-          loadTimeline()
-          
-          const chwRisk = mockResult.details?.finalRecommendation === 'EMERGENCY' ? 'critical' : mockResult.details?.finalRecommendation === 'SEE_DOCTOR' ? 'warning' : 'normal'
-          saveToCHW('WoundTracker', mockResult.summary, chwRisk, mockResult)
-          
-          if (localStorage.getItem('visiondx_autopilot') === 'active') {
-            window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'wound', result: saved } }))
+        handleSimulationFallback({
+          type: 'wound',
+          fallbackResult: mockResult,
+          setLoading,
+          setCurrentResult,
+          onComplete: (saved) => {
+            loadTimeline()
+            const chwRisk = saved.details?.finalRecommendation === 'EMERGENCY' ? 'critical' : saved.details?.finalRecommendation === 'SEE_DOCTOR' ? 'warning' : 'normal'
+            saveToCHW('WoundTracker', saved.summary, chwRisk, saved)
           }
-        }, 1500)
+        })
       } else {
         // We have API keys -> run real LLM diagnostic analysis using mock metrics
         const prompt = `You are an expert medical wound assessment AI. Analyze this wound image. 
