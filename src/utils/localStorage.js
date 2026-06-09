@@ -61,6 +61,20 @@ export function getApiKey() {
 }
 
 /**
+ * Get Gemini API key from localStorage or environment variables
+ */
+export function getGeminiKey() {
+  return localStorage.getItem('visiondx_gemini_key') || import.meta.env.VITE_GEMINI_API_KEY || ''
+}
+
+/**
+ * Check if any required API key is available
+ */
+export function hasAnyApiKey() {
+  return getApiKey() || getGeminiKey()
+}
+
+/**
  * Set API key in localStorage
  */
 export function setApiKey(key) {
@@ -218,6 +232,32 @@ export function saveHeatmapEntry(city, condition) {
 
 export function clearHeatmapData() {
   localStorage.removeItem(HEATMAP_DATA_KEY)
+}
+
+/**
+ * Executes a simulated AI analysis for demo presets when API keys are missing.
+ * @param {string} type - The module type (e.g., 'eye', 'skin')
+ * @param {object} fallbackResult - The result data to save
+ * @param {function} setLoading - Callback to update loading state
+ * @param {function} setCurrentResult - Callback to update the current result state
+ * @param {function} [onComplete] - Optional callback called after simulation finishes
+ */
+export function runDemoFallback(type, fallbackResult, setLoading, setCurrentResult, onComplete) {
+  setTimeout(() => {
+    const saved = saveResult(type, fallbackResult)
+    setCurrentResult(saved)
+    setLoading(false)
+
+    if (localStorage.getItem('visiondx_autopilot') === 'active') {
+      window.dispatchEvent(
+        new CustomEvent('autopilot-result-ready', {
+          detail: { type, result: saved },
+        })
+      )
+    }
+
+    if (onComplete) onComplete(saved)
+  }, 1500)
 }
 
 export function getDemoData(moduleType) {
