@@ -57,6 +57,38 @@ def test_get_wounds_list():
     assert isinstance(res.json(), list)
 
 
+def test_get_wounds_comprehensive():
+    """Create a wound and verify it appears in the list with correct structure."""
+    payload = {
+        "patientId": "test-patient-comp",
+        "woundType": "Pressure Ulcer",
+        "location": "Heel",
+        "initialDate": "2024-03-10",
+        "currentStatus": "stable",
+        "recommendations": ["Offload pressure"]
+    }
+    # Create
+    create_res = client.post("/api/wounds", json=payload)
+    assert create_res.status_code == 200
+    created_id = create_res.json()["id"]
+
+    # List
+    list_res = client.get("/api/wounds")
+    assert list_res.status_code == 200
+    wounds = list_res.json()
+    assert isinstance(wounds, list)
+
+    # Find the created wound
+    found = next((w for w in wounds if w["id"] == created_id), None)
+    assert found is not None
+    assert found["patientId"] == "test-patient-comp"
+    assert found["woundType"] == "Pressure Ulcer"
+    assert found["location"] == "Heel"
+    assert "createdAt" in found
+    assert "measurements" in found
+    assert isinstance(found["measurements"], list)
+
+
 def test_wound_not_found():
     """GET a non-existent wound should return 404."""
     res = client.get("/api/wounds/nonexistent-id-12345")
