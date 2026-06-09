@@ -111,6 +111,32 @@
           "woundId": "486c9730-d6ed-4904-add9-aa5197d4e691"
         }
       ]
+    },
+    {
+      "patientId": "test-patient",
+      "woundType": "Test Wound",
+      "location": "Left arm",
+      "initialDate": "2024-01-01",
+      "currentStatus": "stable",
+      "recommendations": [
+        "Keep dry"
+      ],
+      "id": "e69c3f62-8e4f-4e07-a19a-b982997fcad4",
+      "createdAt": "2026-06-09T05:39:26.496576",
+      "measurements": []
+    },
+    {
+      "patientId": "test-patient",
+      "woundType": "Test Wound",
+      "location": "Left arm",
+      "initialDate": "2024-01-01",
+      "currentStatus": "stable",
+      "recommendations": [
+        "Keep dry"
+      ],
+      "id": "6c5e98e7-0f85-4b80-ac64-8c99f474ad44",
+      "createdAt": "2026-06-09T05:41:59.432117",
+      "measurements": []
     }
   ]
 }
