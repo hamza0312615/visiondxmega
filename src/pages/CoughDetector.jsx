@@ -1,6 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { transcribeAudio, analyzeText } from '../utils/groqApi'
-import { saveResult, isDemoMode, setDemoMode, getDemoData, getApiKey } from '../utils/localStorage'
+import {
+  saveResult,
+  isDemoMode,
+  setDemoMode,
+  getApiKey,
+  hasAnyApiKey,
+  runDemoFallback,
+} from '../utils/localStorage'
 import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
@@ -132,16 +139,8 @@ export default function CoughDetector() {
     setCurrentResult(null)
 
     // Preset simulated fallback mode if API keys are missing
-    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
-    if (blobOrFile && !hasKey) {
-      setTimeout(() => {
-        const saved = saveResult('cough', demoPresets.cough[0].fallbackResult)
-        setCurrentResult(saved)
-        setLoading(false)
-        if (localStorage.getItem('visiondx_autopilot') === 'active') {
-          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'cough', result: saved } }))
-        }
-      }, 1500)
+    if (blobOrFile && !hasAnyApiKey()) {
+      runDemoFallback('cough', demoPresets.cough[0].fallbackResult, setLoading, setCurrentResult)
       return
     }
 
