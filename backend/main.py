@@ -7,18 +7,27 @@ import numpy as np
 import json
 import uuid
 import base64
+import os
 from datetime import datetime
 from pathlib import Path
 
 app = FastAPI(title="WoundCare API", version="1.0.0")
 
-# Allow React frontend to talk to this backend
+# CORS configuration
+# Read allowed origins from an environment variable, defaulting to localhost for development.
+# The environment variable should be a comma-separated string.
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+else:
+    allowed_origins = ["http://localhost:5173", "http://localhost:3000"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # ── Directories ──────────────────────────────────────────────────────────────
