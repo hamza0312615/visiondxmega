@@ -73,6 +73,11 @@ try {
   clearHistory()
   assert.deepStrictEqual(getHistory(), [], 'History should be empty after clearHistory')
   
+  // Use unique IDs by mocking Date.now
+  let mockNow = 1000;
+  const originalDateNow = Date.now;
+  Date.now = () => mockNow++;
+
   const entry1 = saveResult('eye', { summary: 'Eye scan demo', details: { condition: 'Cataract' } })
   const entry2 = saveResult('skin', { summary: 'Skin scan demo', details: { condition: 'Eczema' } })
   
@@ -88,6 +93,8 @@ try {
   deleteEntry(entry1.id)
   assert.strictEqual(getHistory().length, 1, 'History length should decrease after deletion')
   assert.strictEqual(getHistory()[0].type, 'skin', 'Remaining entry should be skin')
+
+  Date.now = originalDateNow;
   console.log('  [✓] Test 2 Passed successfully.')
 
   // Test 3: Risk Log Operations

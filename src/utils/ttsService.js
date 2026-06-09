@@ -2,7 +2,7 @@
  * Unified Text-to-Speech (TTS) Service using ElevenLabs API with browser fallback.
  */
 
-import { getApiKey } from './localStorage'
+import { getApiKey } from './localStorage.js'
 
 // Rachel Multilingual Voice ID on ElevenLabs. High-quality and supports Urdu, Hindi, Arabic, Bengali, Punjabi, Spanish, French, etc.
 const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM' 
