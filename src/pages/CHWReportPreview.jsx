@@ -22,17 +22,19 @@ export default function CHWReportPreview() {
 
     const generateAllReports = async () => {
       setLoading(true);
-      const generated = [];
-      for (const p of patients) {
-        if (p.records && p.records.length > 0) {
+
+      const reportPromises = patients
+        .filter(p => p.records && p.records.length > 0)
+        .map(async (p) => {
           try {
             const text = await generateCHWReportText(p, p.records, worker?.name || 'CHW');
-            generated.push({ patient: p, text, status: 'pending' });
+            return { patient: p, text, status: 'pending' };
           } catch (error) {
-            generated.push({ patient: p, text: "Failed to generate report.", status: 'error' });
+            return { patient: p, text: "Failed to generate report.", status: 'error' };
           }
-        }
-      }
+        });
+
+      const generated = await Promise.all(reportPromises);
       setReports(generated);
       setLoading(false);
     };
