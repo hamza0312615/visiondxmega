@@ -22,7 +22,7 @@ export function CHWProvider({ children }) {
 
 export function useCHW() {
   const context = useContext(CHWContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useCHW must be used within a CHWProvider');
   }
   return context;
