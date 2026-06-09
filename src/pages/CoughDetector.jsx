@@ -158,10 +158,11 @@ export default function CoughDetector() {
       const aiResponse = await analyzeText(prompt)
 
       let coughType = 'Unspecified'
-      if (aiResponse.toLowerCase().includes('dry')) coughType = 'Dry Cough'
-      else if (aiResponse.toLowerCase().includes('wet')) coughType = 'Wet / Productive Cough'
-      else if (aiResponse.toLowerCase().includes('whoop')) coughType = 'Whooping Cough'
-      else if (aiResponse.toLowerCase().includes('bark')) coughType = 'Barking Cough'
+      const lowerRes = aiResponse.toLowerCase()
+      if (lowerRes.includes('dry')) coughType = 'Dry Cough'
+      else if (lowerRes.includes('wet')) coughType = 'Wet / Productive Cough'
+      else if (lowerRes.includes('whoop')) coughType = 'Whooping Cough'
+      else if (lowerRes.includes('bark')) coughType = 'Barking Cough'
 
       let urgency = 'SEE_DOCTOR'
       if (aiResponse.includes('EMERGENCY')) urgency = 'EMERGENCY'

@@ -200,7 +200,8 @@ export default function MedicineAnalyzer() {
       }
 
       let fakeRisk = activeTab === 'manual' ? 'N/A (Manual Search)' : 'Low Risk (Appears Authentic)'
-      if (activeTab !== 'manual' && (aiResponse.toLowerCase().includes('counterfeit') || aiResponse.toLowerCase().includes('irregularit') || aiResponse.toLowerCase().includes('fake') || aiResponse.toLowerCase().includes('suspicious') || aiResponse.toLowerCase().includes('inconsisten'))) {
+      const lowerRes = aiResponse.toLowerCase()
+      if (activeTab !== 'manual' && (lowerRes.includes('counterfeit') || lowerRes.includes('irregularit') || lowerRes.includes('fake') || lowerRes.includes('suspicious') || lowerRes.includes('inconsisten'))) {
         fakeRisk = 'High Risk / Potential Counterfeit Irregularities Detected'
       }
 
