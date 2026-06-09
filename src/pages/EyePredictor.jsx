@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { analyzeImage } from '../utils/groqApi'
 import { saveResult, isDemoMode, setDemoMode, getApiKey } from '../utils/localStorage'
+import { isApiKeyMissing, executeFallback } from '../utils/fallback'
 import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import diseaseData from '../data/disease_data.json'
 import { demoPresets } from '../data/demoPresets'
@@ -103,16 +104,15 @@ export default function EyePredictor() {
 
     // Preset simulated fallback mode if API keys are missing
     const activePreset = forcePreset || presetData
-    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
-    if (activePreset && activeFile.name === activePreset.fileName && !hasKey) {
-      setTimeout(() => {
-        const saved = saveResult('eye', activePreset.fallbackResult)
-        setCurrentResult(saved)
-        setLoading(false)
-        if (localStorage.getItem('visiondx_autopilot') === 'active') {
-          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'eye', result: saved } }))
+    if (activePreset && activeFile.name === activePreset.fileName && isApiKeyMissing()) {
+      executeFallback({
+        type: 'eye',
+        fallbackResult: activePreset.fallbackResult,
+        onComplete: (saved) => {
+          setCurrentResult(saved)
+          setLoading(false)
         }
-      }, 1500)
+      })
       return
     }
 
