@@ -579,7 +579,11 @@ This is an AI-generated simulation for educational purposes. Always consult a ce
       await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
       
       // Clean up native text for TTS (remove emojis and markdown)
-      const cleanTtsText = aiTtsScript.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').replace(/[*_~`]/g, '').trim();
+      const cleanTtsText = aiTtsScript.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
+        .replace(/[*_~`]/g, '')
+        .replace(/[\n\r]+/g, ', ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
       const { audioStream } = tts.toStream(cleanTtsText);
       
       const chunks = [];

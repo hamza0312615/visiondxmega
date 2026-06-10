@@ -102,6 +102,9 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/^[-•]\s*/gm, '')
     .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
+    .replace(/[\n\r]+/g, ', ') // replace newlines with comma for natural pause
+    .replace(/\s{2,}/g, ' ')   // Remove extra spaces
+    .replace(/[_~#`]/g, '')     // Extra markdown cleanup
     .trim()
 
   cancelSpeech()
