@@ -181,18 +181,18 @@ app.post('/api/send-triage', async (req, res) => {
   const urgencySymbol = urgency === 'EMERGENCY' ? '🚨' : urgency === 'SEE_DOCTOR' ? '⚠️' : '✅';
   const cleanAdvice = (triageAdvice || '').replace(/\*\*/g, '').trim();
 
-  const messageBody = `🏥 *VISIONDX CLINICAL TRIAGE REPORT* 🏥
-----------------------------------------
-${urgencySymbol} *Urgency Level:* ${urgency || 'SEE_DOCTOR'}
-🗣️ *Language:* ${language || 'Urdu'}
-📝 *Patient Symptoms:* "${patientSymptoms || 'Voice consultation'}"
+  const messageBody = `*🌟 VisionDX Medical AI Analysis 🌟*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+${urgencySymbol} *Urgency Assessment:* ${urgency || 'SEE_DOCTOR'}
+🗣️ *Consultation Language:* ${language || 'Urdu'}
+📝 *Patient Symptoms:* _"${patientSymptoms || 'Voice consultation'}"_
 
-📌 *AI Triage Assessment & Advice:*
+*🩺 AI Triage & Clinical Advice*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${cleanAdvice}
 
-----------------------------------------
-🎙️ *Voice Note:* Audio triage available — listen to AI advice below.
-⚠️ *Medical Disclaimer:* VisionDX recommendations are computer-generated simulations. Always consult a certified healthcare practitioner.`;
+*⚠️ Important Medical Disclaimer*
+This is an AI-generated clinical simulation for educational purposes. Please consult a certified healthcare professional before taking any medication or making medical decisions.`;
 
   // ── Generate TTS voice audio of the advice ─────────────────────────────────
   let ttsAudioBase64 = null;
@@ -241,7 +241,7 @@ ${cleanAdvice}
       }
 
       const metaPhone = formattedPhone.replace('+', '');
-      const payload = {
+      const textPayload = {
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
         to: metaPhone,
@@ -250,14 +250,62 @@ ${cleanAdvice}
       };
 
       const metaUrl = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
-      console.log(`[Meta API] Dispatching to ${metaPhone}`);
-      const response = await axios.post(metaUrl, payload, {
+      console.log(`[Meta API] Dispatching text to ${metaPhone}`);
+      const response = await axios.post(metaUrl, textPayload, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
+
+      let audioMediaId = null;
+      let audioSent = false;
+      // ── Upload & Send Audio Message if generated ───────────────────────────
+      if (ttsAudioBase64) {
+        try {
+          console.log(`[Meta API] Uploading TTS Voice Note to WhatsApp...`);
+          // Use native fetch to upload multipart/form-data
+          const audioBuffer = Buffer.from(ttsAudioBase64, 'base64');
+          const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+          const formData = new FormData();
+          formData.append('messaging_product', 'whatsapp');
+          formData.append('file', audioBlob, 'triage_audio.mp3');
+
+          const uploadUrl = `https://graph.facebook.com/v19.0/${phoneId}/media`;
+          const uploadRes = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+          });
+          const uploadData = await uploadRes.json();
+          
+          if (uploadData.id) {
+            audioMediaId = uploadData.id;
+            console.log(`[Meta API] Audio uploaded successfully. Media ID: ${audioMediaId}`);
+            
+            // Send the audio message
+            const audioPayload = {
+              messaging_product: 'whatsapp',
+              recipient_type: 'individual',
+              to: metaPhone,
+              type: 'audio',
+              audio: { id: audioMediaId }
+            };
+            
+            await axios.post(metaUrl, audioPayload, {
+              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+            });
+            audioSent = true;
+            console.log(`[Meta API] Audio voice note delivered to ${metaPhone}`);
+          } else {
+            console.warn(`[Meta API] Failed to upload audio:`, uploadData);
+          }
+        } catch (audioErr) {
+          console.warn(`[Meta API] Error sending WhatsApp audio message:`, audioErr.message);
+        }
+      }
 
       return res.status(200).json({
         success: true,
         message: 'Triage alert dispatched successfully via Meta Cloud API.',
+        audioSent,
         details: response.data,
         ttsAudioBase64,
         ttsVoiceName
