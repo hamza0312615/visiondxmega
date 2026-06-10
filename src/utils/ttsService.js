@@ -12,6 +12,7 @@
  */
 
 import { getApiKey } from './localStorage'
+import { generateEdgeTTSInBrowser } from './edgeTtsBrowser'
 
 // ElevenLabs Rachel Multilingual voice
 const ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'
@@ -44,6 +45,19 @@ const LANG_TO_EDGE_CODE = {
   'en-US':    'en',
   'en-GB':    'en-gb',
   'en':       'en',
+}
+
+const EDGE_VOICES = {
+  'ur':    'ur-PK-UzmaNeural',
+  'ur-roman': 'hi-IN-SwaraNeural',
+  'hi':    'hi-IN-SwaraNeural',
+  'ar':    'ar-SA-ZariyahNeural',
+  'bn':    'bn-IN-TanishaaNeural',
+  'pa':    'pa-IN-VaaniNeural',
+  'ps':    'ps-AF-LatifaNeural',
+  'sd':    'sd-PK-SanaNeural',
+  'en':    'en-US-JennyNeural',
+  'en-gb': 'en-GB-SoniaNeural',
 }
 
 const LANG_TO_GOOGLE_CODE = {
@@ -109,25 +123,20 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
 
   cancelSpeech()
 
-  const backendUrl = import.meta.env.VITE_WA_BACKEND_URL || 'http://localhost:3001'
   const edgeEnabled = import.meta.env.VITE_EDGE_TTS_ENABLED !== 'false'
   const edgeLang = LANG_TO_EDGE_CODE[langCode] || LANG_TO_EDGE_CODE[langCode.split('-')[0]] || 'en'
 
   // ── 1. Microsoft Edge Neural TTS (Primary — FREE, best quality for South Asian langs) ──
   if (edgeEnabled) {
     try {
-      // Edge TTS supports up to ~5000 chars in a single request — no chunking needed
-      const url = `${backendUrl}/api/tts?lang=${edgeLang}&text=${encodeURIComponent(cleanText)}`
+      const voiceName = EDGE_VOICES[edgeLang] || EDGE_VOICES['en'];
+      
+      console.log(`[Edge Neural TTS Browser] Requesting voice="${voiceName}"`);
+      const audioBlob = await generateEdgeTTSInBrowser(cleanText, voiceName);
+      const audioUrl = URL.createObjectURL(audioBlob);
 
-      const audio = new Audio(url)
+      const audio = new Audio(audioUrl)
       currentAudio = audio
-
-      // Wait for the audio to be ready before firing onStart
-      await new Promise((resolve, reject) => {
-        audio.oncanplaythrough = resolve
-        audio.onerror = reject
-        audio.load()
-      })
 
       audio.onplay = () => {
         if (onStart) onStart()
@@ -136,6 +145,7 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
       audio.onended = () => {
         if (onEnd) onEnd()
         currentAudio = null
+        URL.revokeObjectURL(audioUrl)
       }
       audio.onerror = (e) => {
         console.error('[Edge TTS] Playback error:', e)
@@ -146,7 +156,7 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
       await audio.play()
       return
     } catch (err) {
-      console.warn('[Edge TTS] Failed (backend may not be running or blocked), trying Google Translate HTTPS TTS:', err.message)
+      console.warn('[Edge TTS Browser] Failed (websocket blocked or timeout), trying Google Translate HTTPS TTS:', err.message)
     }
   }
 
