@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const FormData = require('form-data');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const axios = require('axios');
 const { MsEdgeTTS, OUTPUT_FORMAT } = require('msedge-tts');
 
@@ -487,26 +489,39 @@ Valid language codes: 'ur' (Urdu), 'hi' (Hindi), 'en' (English), 'ar' (Arabic), 
       let voiceLangCode = "en";
 
       if (base64Image) {
-        // Vision Model Call
-        const visionRes = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-          model: 'llama-3.2-11b-vision-preview',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: systemInstruction },
-                { type: 'image_url', image_url: { url: base64Image } }
-              ]
-            }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.3
-        }, { headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' } });
-        
-        const parsed = JSON.parse(visionRes.data.choices[0].message.content);
-        aiResponseText = parsed.text_reply;
-        aiTtsScript = parsed.tts_script;
-        voiceLangCode = parsed.language_code;
+        // Vision Model Call (Using Gemini 2.0 Flash because Groq decommissioned Vision models)
+        console.log(`[Meta API] Sending image to Gemini 2.0 Flash for medical analysis...`);
+        try {
+          const geminiKey = process.env.GEMINI_API_KEY;
+          const genAI = new GoogleGenerativeAI(geminiKey);
+          const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+          
+          // Format base64 for Gemini
+          const b64Data = base64Image.split(',')[1];
+          const mimeType = base64Image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
+
+          const geminiPrompt = systemInstruction + `\n\nEnsure your ONLY output is the RAW JSON object, no markdown code blocks formatting.`;
+
+          const result = await model.generateContent([
+            geminiPrompt,
+            { inlineData: { data: b64Data, mimeType } }
+          ]);
+          
+          let responseText = result.response.text().trim();
+          if (responseText.startsWith('\`\`\`json')) {
+            responseText = responseText.replace(/^\`\`\`json/i, '').replace(/\`\`\`$/i, '').trim();
+          }
+          
+          const parsed = JSON.parse(responseText);
+          aiResponseText = parsed.text_reply;
+          aiTtsScript = parsed.tts_script;
+          voiceLangCode = parsed.language_code;
+        } catch (visionErr) {
+          console.error('[Gemini Vision Error]', visionErr);
+          aiResponseText = "Sorry, I am currently unable to analyze images right now. Please describe your symptoms in text or voice.";
+          aiTtsScript = aiResponseText;
+          voiceLangCode = 'en';
+        }
       } else {
         // Text Model Call
         const textRes = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
