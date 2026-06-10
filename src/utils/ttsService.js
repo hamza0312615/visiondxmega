@@ -46,6 +46,29 @@ const LANG_TO_EDGE_CODE = {
   'en':       'en',
 }
 
+const LANG_TO_GOOGLE_CODE = {
+  'ur-PK':    'ur',
+  'ur':       'ur',
+  'ur-roman': 'hi',       // Use Hindi pronunciation for Roman Urdu phonetics
+  'hi-IN':    'hi',
+  'hi':       'hi',
+  'ar-SA':    'ar',
+  'ar-XA':    'ar',
+  'ar':       'ar',
+  'bn-IN':    'bn',
+  'bn-BD':    'bn',
+  'bn':       'bn',
+  'pa-IN':    'pa',
+  'pa':       'pa',
+  'ps-AF':    'ps',
+  'ps':       'ps',
+  'sd-PK':    'sd',
+  'sd':       'sd',
+  'en-US':    'en',
+  'en-GB':    'en',
+  'en':       'en',
+}
+
 /** Stop all active speech immediately */
 export function cancelSpeech() {
   if (currentAudio) {
@@ -120,11 +143,84 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
       await audio.play()
       return
     } catch (err) {
-      console.warn('[Edge TTS] Failed (backend may not be running), trying ElevenLabs:', err.message)
+      console.warn('[Edge TTS] Failed (backend may not be running or blocked), trying Google Translate HTTPS TTS:', err.message)
     }
   }
 
-  // ── 2. ElevenLabs API (Secondary — premium multilingual) ──────────────────
+  // ── 2. Google Translate HTTPS TTS (Secondary Fallback — FREE, HTTPS, no backend needed) ──
+  try {
+    const googleLang = LANG_TO_GOOGLE_CODE[langCode] || LANG_TO_GOOGLE_CODE[langCode.split('-')[0]] || 'en'
+    console.log(`[Google HTTPS TTS] Trying fallback for lang="${googleLang}"`)
+    
+    // Chunking text if it exceeds 200 characters for Google TTS
+    const sentences = cleanText.match(/[^.!?，。]+[.!?，。]*/g) || [cleanText]
+    const chunks = []
+    let currentChunk = ""
+    
+    for (const sentence of sentences) {
+      if ((currentChunk + sentence).length < 180) {
+        currentChunk += sentence
+      } else {
+        if (currentChunk) chunks.push(currentChunk.trim())
+        currentChunk = sentence
+      }
+    }
+    if (currentChunk) chunks.push(currentChunk.trim())
+    
+    if (chunks.length > 0) {
+      // Play chunks sequentially
+      await new Promise((resolve, reject) => {
+        let chunkIndex = 0
+        
+        const playNextChunk = () => {
+          if (chunkIndex >= chunks.length) {
+            if (onEnd) onEnd()
+            resolve()
+            return
+          }
+          
+          const chunkText = chunks[chunkIndex]
+          const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${googleLang}&client=tw-ob&q=${encodeURIComponent(chunkText)}`
+          
+          const audio = new Audio(url)
+          currentAudio = audio
+          
+          audio.onplay = () => {
+            if (chunkIndex === 0 && onStart) onStart()
+          }
+          audio.onended = () => {
+            chunkIndex++
+            playNextChunk()
+          }
+          audio.onerror = (e) => {
+            console.error('[Google TTS] Playback error on chunk:', e)
+            if (chunkIndex === 0) {
+              reject(new Error('Google TTS failed'))
+            } else {
+              if (onEnd) onEnd()
+              resolve()
+            }
+          }
+          
+          audio.play().catch(err => {
+            if (chunkIndex === 0) {
+              reject(err)
+            } else {
+              if (onError) onError(err)
+              resolve()
+            }
+          })
+        }
+        
+        playNextChunk()
+      })
+      return // Success
+    }
+  } catch (googleErr) {
+    console.warn('[Google HTTPS TTS] Failed, trying ElevenLabs:', googleErr.message)
+  }
+
+  // ── 3. ElevenLabs API (Tertiary — premium multilingual) ──────────────────
   const elevenKey = import.meta.env.VITE_ELEVENLABS_API_KEY
     || localStorage.getItem('visiondx_elevenlabs_key')
     || ''
