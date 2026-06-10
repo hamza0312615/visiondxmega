@@ -89,7 +89,21 @@ export default function VoiceDoc() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
+      
+      let mimeType = 'audio/webm'
+      if (typeof MediaRecorder.isTypeSupported === 'function') {
+        if (MediaRecorder.isTypeSupported('audio/webm')) {
+          mimeType = 'audio/webm'
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/mp4'
+        } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+          mimeType = 'audio/ogg'
+        } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+          mimeType = 'audio/wav'
+        }
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType })
       mediaRecorderRef.current = mediaRecorder
       audioChunksRef.current = []
 
@@ -100,7 +114,7 @@ export default function VoiceDoc() {
       }
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
         stream.getTracks().forEach(track => track.stop())
         setAudioFile(audioBlob)
         processVoice(audioBlob)
@@ -234,7 +248,7 @@ Instructions:
       setCurrentResult(saved)
 
       // Auto-play speech
-      speakText(cleanSpeechText, language)
+      speakText(cleanSpeechText, displayLangName)
 
     } catch (err) {
       setError(err.message || 'Failed to process voice triage. Please check your API key or try again.')
@@ -340,7 +354,7 @@ Instructions:
       setCurrentResult(saved)
 
       // Auto-play speech
-      speakText(cleanSpeechText, language)
+      speakText(cleanSpeechText, displayLangName)
 
       if (localStorage.getItem('visiondx_autopilot') === 'active') {
         window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'voicedoc', result: saved } }))
@@ -384,7 +398,8 @@ Instructions:
       cancelSpeech()
       setSpeaking(false)
     } else if (currentResult && currentResult.speechText) {
-      speakText(currentResult.speechText, language)
+      const respLang = currentResult.details?.responseLanguage || language
+      speakText(currentResult.speechText, respLang)
     }
   }
 

@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const FormData = require('form-data');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const axios = require('axios');
 const { MsEdgeTTS, OUTPUT_FORMAT } = require('msedge-tts');
@@ -13,6 +12,12 @@ const PORT = process.env.PORT || 3001;
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
+  '*',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
@@ -84,14 +89,17 @@ app.get('/api/tts', async (req, res) => {
     || EDGE_VOICES[langKey.split('-')[0]]
     || EDGE_VOICES['en'];
 
-  console.log(`[Edge TTS] lang="${langKey}" → voice="${voiceName}" | text="${text.substring(0, 60)}..."`);
+  // Strip emojis and formatting for clean TTS output
+  const cleanTtsText = text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').replace(/[#*_~`]/g, '').trim();
+
+  console.log(`[Edge TTS] lang="${langKey}" → voice="${voiceName}" | text="${cleanTtsText.substring(0, 60)}..."`);
 
   try {
     const tts = new MsEdgeTTS();
     await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
     
     // toStream() returns { audioStream, metadataStream, requestId }
-    const { audioStream } = tts.toStream(text);
+    const { audioStream } = tts.toStream(cleanTtsText);
 
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'public, max-age=3600');
@@ -133,13 +141,16 @@ app.post('/api/tts/generate', async (req, res) => {
     || EDGE_VOICES[langKey.split('-')[0]]
     || EDGE_VOICES['en'];
 
-  console.log(`[TTS Generate] lang="${langKey}" → voice="${voiceName}" | "${text.substring(0, 60)}..."`);
+  // Strip emojis and formatting for clean TTS output
+  const cleanTtsText = text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').replace(/[#*_~`]/g, '').trim();
+
+  console.log(`[TTS Generate] lang="${langKey}" → voice="${voiceName}" | "${cleanTtsText.substring(0, 60)}..."`);
 
   try {
     const tts = new MsEdgeTTS();
     await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
 
-    const { audioStream } = tts.toStream(text);
+    const { audioStream } = tts.toStream(cleanTtsText);
 
     const chunks = [];
     await new Promise((resolve, reject) => {
@@ -201,14 +212,14 @@ This is an AI-generated clinical simulation for educational purposes. Please con
   let ttsVoiceName = null;
   try {
     const langKey = (language || 'en').toLowerCase().replace(/[^a-z-]/g, '').split('/')[0].trim();
-    const voiceKey = langKey.includes('urdu') ? 'ur' :
+    const voiceKey = langKey.includes('roman') ? 'ur-roman' :
+                     langKey.includes('urdu') ? 'ur' :
                      langKey.includes('hindi') ? 'hi' :
                      langKey.includes('arabic') ? 'ar' :
                      langKey.includes('punjabi') ? 'pa' :
                      langKey.includes('bengali') ? 'bn' :
                      langKey.includes('pashto') ? 'ps' :
-                     langKey.includes('sindhi') ? 'sd' :
-                     langKey.includes('roman') ? 'hi' : 'en';
+                     langKey.includes('sindhi') ? 'sd' : 'en';
 
     ttsVoiceName = EDGE_VOICES[voiceKey] || EDGE_VOICES['en'];
     const tts = new MsEdgeTTS();

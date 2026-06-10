@@ -157,8 +157,14 @@ export async function transcribeAudio(audioBlob, apiKey) {
   const key = apiKey || getApiKey()
   if (!key) throw new Error('No API key found. Please set your Groq API key in Settings.')
 
+  const mimeType = audioBlob.type || 'audio/webm'
+  const extension = mimeType.includes('mp4') ? 'mp4' :
+                    mimeType.includes('ogg') ? 'ogg' :
+                    mimeType.includes('wav') ? 'wav' :
+                    mimeType.includes('mpeg') ? 'mp3' : 'webm'
+
   const formData = new FormData()
-  formData.append('file', audioBlob, 'audio.webm')
+  formData.append('file', audioBlob, `audio.${extension}`)
   formData.append('model', 'whisper-large-v3')
   formData.append('response_format', 'json')
 

@@ -73,11 +73,12 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
     return
   }
 
-  // Sanitize: strip markdown asterisks and dashes
+  // Sanitize: strip markdown asterisks, dashes, and emojis
   const cleanText = text
     .replace(/\*\*/g, '')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/^[-•]\s*/gm, '')
+    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
     .trim()
 
   cancelSpeech()
