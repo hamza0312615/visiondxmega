@@ -12,7 +12,6 @@ import {
 import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
-import LoadingSpinner from '../components/LoadingSpinner'
 import WebcamCapture from '../components/WebcamCapture'
 import Skeleton from '../components/Skeleton'
 import { 
