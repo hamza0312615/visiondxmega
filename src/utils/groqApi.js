@@ -25,55 +25,75 @@ export async function analyzeImage(imageFile, prompt, apiKey) {
   const base64Image = await fileToBase64(imageFile)
   const mimeType = imageFile.type || 'image/jpeg'
 
-  try {
-    // Priority 1: Try Groq llama-3.2-11b-vision-preview
-    const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.2-11b-vision-preview',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:${mimeType};base64,${base64Image}`,
-                },
-              },
-              {
-                type: 'text',
-                text: prompt,
-              },
-            ],
-          },
-        ],
-        max_tokens: 1536,
-        temperature: 0.3,
-      }),
-    })
+  // Priority 1: Try Groq meta-llama/llama-4-scout-17b-16e-instruct (best vision, latest 2025)
+  const VISION_MODELS = [
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'llama-3.2-90b-vision-preview',
+    'llama-3.2-11b-vision-preview',
+  ]
 
-    if (response.ok) {
-      const data = await response.json()
-      if (data.choices?.[0]?.message?.content) {
-        return data.choices[0].message.content
+  for (const visionModel of VISION_MODELS) {
+    try {
+      const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${key}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: visionModel,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert medical image analysis AI. Analyze the uploaded image thoroughly, read ALL visible text including medicine names, dosages, ingredients, warnings. Be specific and accurate.'
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:${mimeType};base64,${base64Image}`,
+                    detail: 'high'
+                  },
+                },
+                {
+                  type: 'text',
+                  text: prompt,
+                },
+              ],
+            },
+          ],
+          max_tokens: 2048,
+          temperature: 0.2,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const content = data.choices?.[0]?.message?.content
+        if (content && content.length > 100) {
+          console.log(`✅ Groq Vision [${visionModel}] succeeded`)
+          return content
+        }
+      } else {
+        const errData = await response.json().catch(() => ({}))
+        console.warn(`Groq Vision [${visionModel}] failed: ${response.status} — ${errData?.error?.message}`)
       }
+    } catch (err) {
+      console.warn(`Groq Vision [${visionModel}] threw error:`, err.message)
     }
-  } catch (err) {
-    console.warn('Groq Vision API failed, attempting fallback...', err)
   }
+
+
 
   // Priority 2: Fallback to Gemini Vision API if available in env/localStorage
   const geminiKey = localStorage.getItem('visiondx_gemini_key') || import.meta.env.VITE_GEMINI_API_KEY
   if (geminiKey) {
     try {
-      console.log('Attempting Gemini Vision API fallback via @google/generative-ai SDK...')
+      console.log('Attempting Gemini 2.0 Flash Vision API fallback...')
       const genAI = new GoogleGenerativeAI(geminiKey)
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
       const result = await model.generateContent([
         prompt,
         { inlineData: { data: base64Image, mimeType } }
@@ -83,7 +103,7 @@ export async function analyzeImage(imageFile, prompt, apiKey) {
     } catch (sdkErr) {
       console.warn('Gemini SDK fallback failed, attempting Gemini REST fallback...', sdkErr)
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
         const response = await fetch(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

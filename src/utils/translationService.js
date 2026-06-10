@@ -1,69 +1,95 @@
 /**
- * Translation service using MyMemory Translation API and LibreTranslate (Argos) fallback.
+ * VisionDX Mega — Translation Service
+ *
+ * Priority:
+ *   1. MyMemory API (free, 10k words/day, decent quality)
+ *   2. LibreTranslate / ArgosTranslate (open-source fallback)
+ *
+ * Supports: ur, hi, ar, bn, pa, ps (Pashto), sd (Sindhi), en
  */
 
+// Full language code → ISO 639-1 short code mapping
 const LANG_MAPPING = {
-  'ur-PK': 'ur',
-  'ur': 'ur',
-  'en-US': 'en',
-  'en': 'en'
-};
+  'ur-PK':    'ur',
+  'ur':       'ur',
+  'ur-roman': 'en',   // Roman Urdu is written in English letters — don't translate
+  'hi-IN':    'hi',
+  'hi':       'hi',
+  'ar-SA':    'ar',
+  'ar-XA':    'ar',
+  'ar':       'ar',
+  'bn-IN':    'bn',
+  'bn-BD':    'bn',
+  'bn':       'bn',
+  'pa-IN':    'pa',
+  'pa':       'pa',
+  'ps-AF':    'ps',
+  'ps':       'ps',
+  'sd-PK':    'sd',
+  'sd':       'sd',
+  'en-US':    'en',
+  'en-GB':    'en',
+  'en':       'en',
+}
 
 /**
- * Translates the given text from sourceLangCode to targetLangCode.
- * Uses MyMemory API as the primary translator and LibreTranslate (Argos) as a fallback.
- * 
- * @param {string} text The text to translate
- * @param {string} targetLangCode Locale code for the target language (e.g. 'ur')
- * @param {string} sourceLangCode Locale code for the source language (default 'en')
- * @returns {Promise<string|null>} The translated text, or null if all calls fail.
+ * Translate text from sourceLang to targetLang.
+ * @param {string} text             Text to translate
+ * @param {string} targetLangCode   Target language code (e.g. 'ur-PK', 'ps-AF')
+ * @param {string} sourceLangCode   Source language code (default 'en')
+ * @returns {Promise<string|null>}  Translated text, or null if all fail
  */
 export async function translateText(text, targetLangCode, sourceLangCode = 'en') {
-  if (!text || !text.trim()) return '';
+  if (!text || !text.trim()) return ''
 
-  const target = LANG_MAPPING[targetLangCode] || targetLangCode;
-  const source = LANG_MAPPING[sourceLangCode] || sourceLangCode;
+  const target = LANG_MAPPING[targetLangCode] || targetLangCode.split('-')[0]
+  const source = LANG_MAPPING[sourceLangCode] || sourceLangCode.split('-')[0]
 
-  if (target === source) {
-    return text;
+  // No translation needed
+  if (target === source || target === 'en' && source === 'en') {
+    return text
   }
 
-  // 1. Primary: MyMemory API
+  // Roman Urdu — AI generates it directly, no translation needed here
+  if (targetLangCode === 'ur-roman') {
+    return text
+  }
+
+  // ── 1. MyMemory API (Primary, free, 10k words/day) ──────────────────────
   try {
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${target}&de=you@email.com`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`MyMemory returned HTTP status ${res.status}`);
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${target}`
+    const res = await fetch(url)
+    if (res.ok) {
+      const data = await res.json()
+      const translated = data?.responseData?.translatedText
+      if (translated && data?.responseStatus === 200) {
+        console.log(`✅ [MyMemory] ${source} → ${target}: "${translated.substring(0, 60)}..."`)
+        return translated
+      }
     }
-    const data = await res.json();
-    if (data?.responseData?.translatedText) {
-      return data.responseData.translatedText;
-    }
-  } catch (error) {
-    console.warn('MyMemory translation failed, attempting LibreTranslate fallback:', error);
+  } catch (err) {
+    console.warn('[MyMemory] Translation failed:', err.message)
   }
 
-  // 2. Secondary Fallback: LibreTranslate / ArgosTranslate
+  // ── 2. LibreTranslate / ArgosTranslate (Fallback) ───────────────────────
   try {
     const res = await fetch('https://translate.argosopentech.com/translate', {
       method: 'POST',
-      body: JSON.stringify({
-        q: text,
-        source: source,
-        target: target,
-        api_key: ''
-      }),
-      headers: { 'Content-Type': 'application/json' }
-    });
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: text, source, target, api_key: '' })
+    })
     if (res.ok) {
-      const data = await res.json();
-      if (data?.translatedText) {
-        return data.translatedText;
+      const data = await res.json()
+      const translated = data?.translatedText
+      if (translated) {
+        console.log(`✅ [LibreTranslate] ${source} → ${target}`)
+        return translated
       }
     }
-  } catch (error) {
-    console.warn('LibreTranslate fallback failed:', error);
+  } catch (err) {
+    console.warn('[LibreTranslate] Translation failed:', err.message)
   }
 
-  return null;
+  console.warn(`[Translation] All services failed for ${source} → ${target}. Returning original.`)
+  return null
 }

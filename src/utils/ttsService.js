@@ -1,18 +1,52 @@
 /**
- * Unified Text-to-Speech (TTS) Service using ElevenLabs API with browser fallback.
+ * VisionDX Mega — Unified Text-to-Speech (TTS) Service
+ *
+ * Priority chain (best quality first):
+ *   1. Microsoft Edge Neural TTS (via local backend proxy)
+ *      → FREE, no API key, no Google Console
+ *      → Supports: ur-PK-UzmaNeural, ps-AF-LatifaNeural, sd-PK-SanaNeural,
+ *                  hi-IN-SwaraNeural, ar-SA-ZariyahNeural, pa-IN-VaaniNeural,
+ *                  bn-IN-TanishaaNeural, en-US-JennyNeural
+ *   2. ElevenLabs API (eleven_multilingual_v2 — premium English/other)
+ *   3. Browser native speechSynthesis (absolute last resort)
  */
 
 import { getApiKey } from './localStorage'
 
-// Rachel Multilingual Voice ID on ElevenLabs. High-quality and supports Urdu, Hindi, Arabic, Bengali, Punjabi, Spanish, French, etc.
-const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM' 
+// ElevenLabs Rachel Multilingual voice
+const ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'
 
 let currentAudio = null
 let currentUtterance = null
 
 /**
- * Halts any active speech immediately (both ElevenLabs audio and native speech synthesis)
+ * Map from app-level lang codes → backend lang codes for Edge TTS
+ * The backend normalises these and picks the right neural voice automatically.
  */
+const LANG_TO_EDGE_CODE = {
+  'ur-PK':    'ur',
+  'ur':       'ur',
+  'ur-roman': 'ur-roman',   // Backend maps → hi-IN-SwaraNeural (best for Roman Urdu)
+  'hi-IN':    'hi',
+  'hi':       'hi',
+  'ar-SA':    'ar',
+  'ar-XA':    'ar',
+  'ar':       'ar',
+  'bn-IN':    'bn',
+  'bn-BD':    'bn',
+  'bn':       'bn',
+  'pa-IN':    'pa',
+  'pa':       'pa',
+  'ps-AF':    'ps',          // Pashto — ONLY available via Edge TTS
+  'ps':       'ps',
+  'sd-PK':    'sd',          // Sindhi — ONLY available via Edge TTS
+  'sd':       'sd',
+  'en-US':    'en',
+  'en-GB':    'en-gb',
+  'en':       'en',
+}
+
+/** Stop all active speech immediately */
 export function cancelSpeech() {
   if (currentAudio) {
     currentAudio.pause()
@@ -27,53 +61,97 @@ export function cancelSpeech() {
 
 /**
  * Speaks the given text aloud.
- * Attempts ElevenLabs API first if the VITE_ELEVENLABS_API_KEY is defined.
- * Falls back to browser native speechSynthesis if not available or on error.
- * 
- * @param {string} text The text script to read
- * @param {string} langCode Target language code (e.g. 'ur-PK', 'en-US', 'hi-IN')
- * @param {object} options Callbacks: { onStart, onEnd, onError }
+ * @param {string} text        The text to speak
+ * @param {string} langCode    BCP-47 code (e.g. 'ur-PK', 'hi-IN', 'ps-AF')
+ * @param {object} options     { onStart, onEnd, onError }
  */
 export async function speakText(text, langCode = 'en-US', options = {}) {
   const { onStart, onEnd, onError } = options
-  
+
   if (!text || !text.trim()) {
     if (onEnd) onEnd()
     return
   }
 
-  // Sanitize the text (remove markdown asterisks and dashes)
-  const cleanText = text.replace(/\*\*/g, '').replace(/[-*]/g, '').trim()
+  // Sanitize: strip markdown asterisks and dashes
+  const cleanText = text
+    .replace(/\*\*/g, '')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/^[-•]\s*/gm, '')
+    .trim()
 
-  // Always cancel any active speech first
   cancelSpeech()
 
-  // Get ElevenLabs API Key from environment or localStorage
-  const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY || localStorage.getItem('visiondx_elevenlabs_key') || ''
+  const backendUrl = import.meta.env.VITE_WA_BACKEND_URL || 'http://localhost:3001'
+  const edgeEnabled = import.meta.env.VITE_EDGE_TTS_ENABLED !== 'false'
+  const edgeLang = LANG_TO_EDGE_CODE[langCode] || LANG_TO_EDGE_CODE[langCode.split('-')[0]] || 'en'
 
-  if (apiKey) {
+  // ── 1. Microsoft Edge Neural TTS (Primary — FREE, best quality for South Asian langs) ──
+  if (edgeEnabled) {
     try {
-      console.log(`ElevenLabs TTS requested for: "${cleanText.substring(0, 40)}..." (Lang: ${langCode})`)
-      
-      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${DEFAULT_VOICE_ID}`, {
-        method: 'POST',
-        headers: {
-          'xi-api-key': apiKey,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          text: cleanText,
-          model_id: 'eleven_multilingual_v2',
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75
-          }
-        })
+      // Edge TTS supports up to ~5000 chars in a single request — no chunking needed
+      const url = `${backendUrl}/api/tts?lang=${edgeLang}&text=${encodeURIComponent(cleanText)}`
+
+      const audio = new Audio(url)
+      currentAudio = audio
+
+      // Wait for the audio to be ready before firing onStart
+      await new Promise((resolve, reject) => {
+        audio.oncanplaythrough = resolve
+        audio.onerror = reject
+        audio.load()
       })
 
-      if (!response.ok) {
-        throw new Error(`ElevenLabs API returned status code ${response.status}`)
+      audio.onplay = () => {
+        if (onStart) onStart()
+        console.log(`✅ [Edge Neural TTS] ${edgeLang} → playing "${cleanText.substring(0, 50)}..."`)
       }
+      audio.onended = () => {
+        if (onEnd) onEnd()
+        currentAudio = null
+      }
+      audio.onerror = (e) => {
+        console.error('[Edge TTS] Playback error:', e)
+        if (onError) onError(e)
+        currentAudio = null
+      }
+
+      await audio.play()
+      return
+    } catch (err) {
+      console.warn('[Edge TTS] Failed (backend may not be running), trying ElevenLabs:', err.message)
+    }
+  }
+
+  // ── 2. ElevenLabs API (Secondary — premium multilingual) ──────────────────
+  const elevenKey = import.meta.env.VITE_ELEVENLABS_API_KEY
+    || localStorage.getItem('visiondx_elevenlabs_key')
+    || ''
+
+  if (elevenKey) {
+    try {
+      console.log(`[ElevenLabs] Requesting TTS for "${cleanText.substring(0, 40)}..."`)
+
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
+        {
+          method: 'POST',
+          headers: {
+            'xi-api-key': elevenKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            text: cleanText,
+            model_id: 'eleven_multilingual_v2',
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75
+            }
+          })
+        }
+      )
+
+      if (!response.ok) throw new Error(`ElevenLabs API status ${response.status}`)
 
       const audioBlob = await response.blob()
       const audioUrl = URL.createObjectURL(audioBlob)
@@ -82,144 +160,58 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
 
       audio.onplay = () => {
         if (onStart) onStart()
+        console.log(`✅ [ElevenLabs] Playing: "${cleanText.substring(0, 40)}..."`)
       }
-      audio.onended = () => {
-        if (onEnd) onEnd()
-        currentAudio = null
-      }
-      audio.onerror = (e) => {
-        console.error('Audio playback error:', e)
-        if (onError) onError(e)
-        currentAudio = null
-      }
+      audio.onended = () => { if (onEnd) onEnd(); currentAudio = null }
+      audio.onerror = (e) => { if (onError) onError(e); currentAudio = null }
 
       await audio.play()
       return
     } catch (err) {
-      console.warn('ElevenLabs TTS failed, rolling back to native speechSynthesis:', err)
+      console.warn('[ElevenLabs] Failed, falling back to browser native:', err.message)
     }
   }
 
-  // Fallback to Google Translate TTS via Backend Proxy
-  let targetLangCode = langCode.split('-')[0].toLowerCase() // 'ur', 'en', 'ar', 'hi', etc.
-  if (langCode === 'ur-roman') {
-    targetLangCode = 'hi' // Google TTS Hindi voice is excellent at reading Roman Urdu/Hindustani
-  }
-  const backendUrl = import.meta.env.VITE_WA_BACKEND_URL || 'http://localhost:3001'
-  console.log(`Using Google TTS Proxy Fallback for: ${cleanText.substring(0, 40)}...`)
+  // ── 3. Browser native speechSynthesis (Last resort) ───────────────────────
+  fallbackToNativeTTS(cleanText, langCode, onStart, onEnd, onError)
+}
 
-  // Google TTS has a ~200 char limit. We need to chunk the text.
-  const chunks = []
-  let currentChunk = ''
-  const sentences = cleanText.split(/([.!?،۔\n]+)/) 
-  
-  for (let i = 0; i < sentences.length; i++) {
-    const part = sentences[i]
-    if ((currentChunk.length + part.length) <= 190) {
-      currentChunk += part
-    } else {
-      if (currentChunk.trim()) chunks.push(currentChunk.trim())
-      if (part.length > 190) {
-        let remaining = part
-        while (remaining.length > 190) {
-          chunks.push(remaining.substring(0, 190))
-          remaining = remaining.substring(190)
-        }
-        currentChunk = remaining
-      } else {
-        currentChunk = part
-      }
-    }
-  }
-  if (currentChunk.trim()) chunks.push(currentChunk.trim())
+function fallbackToNativeTTS(cleanText, langCode, onStart, onEnd, onError) {
+  console.log('[Native TTS] Using browser speechSynthesis as last resort')
 
-  if (chunks.length === 0) {
-    if (onEnd) onEnd()
+  if (!('speechSynthesis' in window)) {
+    console.warn('[Native TTS] speechSynthesis not supported in this browser.')
+    if (onError) onError(new Error('TTS not supported'))
     return
   }
 
-  let chunkIndex = 0
+  const targetLangCode = langCode === 'ur-roman' ? 'en-US' : langCode
+  const utterance = new SpeechSynthesisUtterance(cleanText)
 
-  const playNextChunk = async () => {
-    if (chunkIndex >= chunks.length) {
-      if (onEnd) onEnd()
-      return
-    }
+  utterance.lang = targetLangCode
+  utterance.rate = langCode === 'ur-roman' ? 0.88 : 0.95
 
-    const chunk = chunks[chunkIndex]
-    const url = `${backendUrl}/api/tts?lang=${targetLangCode}&text=${encodeURIComponent(chunk)}`
-    
-    try {
-      const audio = new Audio(url)
-      currentAudio = audio
+  const voices = window.speechSynthesis.getVoices()
+  const langPrefix = targetLangCode.split('-')[0].toLowerCase()
 
-      audio.onplay = () => {
-        if (chunkIndex === 0 && onStart) onStart()
-      }
-      
-      audio.onended = () => {
-        chunkIndex++
-        playNextChunk()
-      }
+  let bestVoice = voices.find(v => v.lang.toLowerCase() === targetLangCode.toLowerCase())
+    || voices.find(v => v.lang.toLowerCase().startsWith(langPrefix))
 
-      audio.onerror = (e) => {
-        console.error('Google TTS audio proxy error:', e)
-        fallbackToNativeTTS(cleanText, langCode, onStart, onEnd, onError)
-      }
-
-      await audio.play()
-    } catch (err) {
-      console.warn('Google TTS proxy failed to play:', err)
-      fallbackToNativeTTS(cleanText, langCode, onStart, onEnd, onError)
-    }
+  // Special overrides for better voice selection on Windows/Mac
+  if (langCode === 'hi-IN') {
+    bestVoice = voices.find(v => v.name.includes('Swara') || v.name.includes('Hindi') || v.lang.includes('hi'))
+      || bestVoice
+  } else if (langCode === 'ar-SA' || langCode === 'ar-XA') {
+    bestVoice = voices.find(v => v.name.includes('Arabic') || v.lang.includes('ar'))
+      || bestVoice
   }
 
-  playNextChunk()
+  if (bestVoice) utterance.voice = bestVoice
+
+  utterance.onstart = () => { if (onStart) onStart() }
+  utterance.onend = () => { if (onEnd) onEnd(); currentUtterance = null }
+  utterance.onerror = (e) => { if (onError) onError(e); currentUtterance = null }
+
+  currentUtterance = utterance
+  window.speechSynthesis.speak(utterance)
 }
-
-// Last resort: Native browser TTS
-function fallbackToNativeTTS(cleanText, langCode, onStart, onEnd, onError) {
-  console.log('Using native speechSynthesis as last resort fallback.')
-  if ('speechSynthesis' in window) {
-    const targetLangCode = langCode === 'ur-roman' ? 'en-US' : langCode
-    const utterance = new SpeechSynthesisUtterance(cleanText)
-    
-    utterance.lang = targetLangCode
-    utterance.rate = langCode === 'ur-roman' ? 0.88 : 0.95 
-
-    const voices = window.speechSynthesis.getVoices()
-    let bestVoice = voices.find(v => v.lang.toLowerCase() === targetLangCode.toLowerCase()) ||
-                     voices.find(v => v.lang.toLowerCase().startsWith(targetLangCode.split('-')[0].toLowerCase()))
-
-    if (langCode === 'ur-PK') {
-      bestVoice = voices.find(v => v.lang.includes('ur') || v.name.includes('Urdu')) || bestVoice
-    } else if (langCode === 'hi-IN') {
-      bestVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi') || v.name.includes('Google ID')) || bestVoice
-    } else if (langCode === 'ar-SA') {
-      bestVoice = voices.find(v => v.lang.includes('ar') || v.name.includes('Arabic')) || bestVoice
-    }
-
-    if (bestVoice) {
-      utterance.voice = bestVoice
-    }
-
-    utterance.onstart = () => {
-      if (onStart) onStart()
-    }
-    utterance.onend = () => {
-      if (onEnd) onEnd()
-      currentUtterance = null
-    }
-    utterance.onerror = (e) => {
-      if (onError) onError(e)
-      currentUtterance = null
-    }
-
-    currentUtterance = utterance
-    window.speechSynthesis.speak(utterance)
-  } else {
-    console.warn('Browser does not support native speechSynthesis.')
-    if (onError) onError(new Error('TTS not supported at all'))
-  }
-}
-

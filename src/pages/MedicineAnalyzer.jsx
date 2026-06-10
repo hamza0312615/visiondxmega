@@ -134,21 +134,55 @@ export default function MedicineAnalyzer() {
         
         aiResponse = await analyzeText(textPrompt)
       } else {
-        const visionPrompt = `You are an expert pharmacist AI assistant. Analyze this image of a medicine box, pill bottle, or prescription. 
-1) Identify the medicine name, active ingredients, and primary therapeutic class.
-2) Explain what condition it treats, standard adult dosage, common side effects, and critical contraindications/warnings.
-3) Perform a counterfeit packaging screening (look for packaging irregularities, font inconsistencies, spelling errors, or missing security seals).
-4) Suggested Medicines & Early Care (in absence of doctor): Provide home care tips, non-prescription precautions, or generic early-use suggested alternative medicines to consider if a doctor is not immediately reachable. Add a clear disclaimer that these suggestions are for temporary relief/education and need verification.
-5) Provide clear patient guidance and determine medical urgency. End your response with exactly one of these urgency flags: NORMAL, SEE_DOCTOR, or EMERGENCY.`
- 
+        const visionPrompt = `You are an expert pharmacist AI and medical imaging specialist. A patient has uploaded a photo of a medicine tablet, pill, blister pack, medicine box, or prescription bottle.
+
+YOUR PRIMARY TASK: Read and transcribe EVERY piece of text visible in this image accurately — brand name, generic name, strength/dosage (mg/ml), manufacturer, batch number, expiry date, active ingredients, and any warnings.
+
+Then provide a complete analysis:
+
+1) **Medicine Identification**: State the EXACT medicine name(s) you can read in the image. Include brand name AND generic/chemical name. State the strength (e.g., 500mg, 10mg). If you cannot read the text clearly, describe what you can see and give your best identification.
+
+2) **Therapeutic Class & Indications**: What medical condition does this medicine treat? How does it work in the body?
+
+3) **Standard Dosage**: Adult dose, pediatric dose if applicable, frequency, maximum daily dose.
+
+4) **Side Effects**: List common (>10%), uncommon (1-10%), and serious/rare side effects to watch for.
+
+5) **Contraindications & Drug Interactions**: Who should NOT take this? Which other medicines interact dangerously?
+
+6) **Counterfeit Packaging Screening**: Examine the packaging carefully — check for:
+   - Font consistency and print quality
+   - Spelling errors or grammatical mistakes  
+   - Missing regulatory markings (batch no, expiry, manufacturer address)
+   - Color/logo authenticity
+   State clearly: AUTHENTIC, SUSPICIOUS, or CANNOT_DETERMINE
+
+7) **Home Care & Early Access**: If a doctor is unavailable, what safe precautions can someone follow? Are there safer OTC alternatives?
+
+8) **Urgency Assessment**: End your response with exactly one of: NORMAL, SEE_DOCTOR, or EMERGENCY
+
+Be thorough, specific, and accurate. If the image is blurry or text is hard to read, state what you can see and give your best assessment.`
+
         aiResponse = await analyzeImage(activeFile, visionPrompt)
 
-        const nameMatch = aiResponse.match(/(?:name|identify|medicine|drug|active ingredient)[\s:=]+([^\n.,;]+)/i)
-        if (nameMatch && nameMatch[1]) {
-          medName = nameMatch[1].replace(/[^a-zA-Z0-9\s-]/g, '').trim()
-        } else {
-          medName = 'Prescription / Medication'
+        // Improved medicine name extraction — try multiple patterns
+        const namePatterns = [
+          /\*\*Medicine Identification\*\*[:\s]+([^\n*]+)/i,
+          /brand name[:\s]+([^\n,.(]+)/i,
+          /(?:^|\n)\s*1\)[^\n]*?([A-Z][a-zA-Z0-9\s-]{3,30}(?:\s+\d+\s*mg)?)/m,
+          /(?:identified?|medicine|drug|medication|tablet|capsule)[:\s]+([A-Za-z][^\n.,;(]{3,40})/i,
+          /([A-Z][a-z]+(?:\s+[A-Z]?[a-z]+)?\s+\d+\s*(?:mg|ml|mcg|g))/,
+        ]
+
+        let extracted = null
+        for (const pattern of namePatterns) {
+          const m = aiResponse.match(pattern)
+          if (m && m[1]) {
+            extracted = m[1].replace(/[*_#`]/g, '').trim()
+            if (extracted.length > 2 && extracted.length < 60) break
+          }
         }
+        medName = extracted || 'Unidentified Medication'
       }
 
       // External API Verification: openFDA API & RxNorm API by NIH / NLM

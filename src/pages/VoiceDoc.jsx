@@ -400,7 +400,7 @@ Instructions:
     const backendUrl = import.meta.env.VITE_WA_BACKEND_URL || 'http://localhost:3001'
 
     try {
-      // Try Meta WhatsApp backend first
+      // Try Meta/WaSender WhatsApp backend
       const res = await fetch(`${backendUrl}/api/send-triage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -409,6 +409,24 @@ Instructions:
       const data = await res.json()
       if (data.success) {
         alert('✅ Triage alert sent to doctor via WhatsApp!')
+
+        // 🎙️ Play the Edge TTS voice audio returned by the backend
+        if (data.ttsAudioBase64) {
+          try {
+            const byteChars = atob(data.ttsAudioBase64)
+            const byteArray = new Uint8Array(byteChars.length)
+            for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i)
+            const blob = new Blob([byteArray], { type: 'audio/mpeg' })
+            const url = URL.createObjectURL(blob)
+            const audio = new Audio(url)
+            audio.play()
+            setSpeaking(true)
+            audio.onended = () => setSpeaking(false)
+            console.log(`✅ WhatsApp TTS played: ${data.ttsVoiceName}`)
+          } catch (audioErr) {
+            console.warn('Could not play WhatsApp TTS audio:', audioErr)
+          }
+        }
         return
       }
     } catch {
