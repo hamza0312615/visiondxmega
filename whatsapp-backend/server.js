@@ -363,6 +363,8 @@ app.get('/webhook', (req, res) => {
   }
 });
 
+const processedMessageIds = new Set();
+
 // ── WhatsApp Webhook (Incoming Messages) ──────────────────────────────────────
 app.post('/webhook', async (req, res) => {
   // Acknowledge receipt to Meta immediately
@@ -376,7 +378,18 @@ app.post('/webhook', async (req, res) => {
       const changes = entry?.changes?.[0];
       const message = changes?.value?.messages?.[0];
       
-      if (!message) return;
+      if (!message || !message.id) return;
+
+      // Deduplicate messages (Meta sometimes sends retries or duplicate webhook events)
+      if (processedMessageIds.has(message.id)) {
+        return;
+      }
+      processedMessageIds.add(message.id);
+      
+      // Prevent memory leak by clearing old IDs periodically
+      if (processedMessageIds.size > 1000) {
+        processedMessageIds.clear();
+      }
 
       const userPhone = message.from;
       const groqKey = process.env.GROQ_API_KEY;
@@ -452,12 +465,12 @@ app.post('/webhook', async (req, res) => {
       }
 
       // 1. Send to Groq AI for analysis (with JSON formatting for perfect TTS accents)
-      const systemInstruction = `You are a clinical AI assistant for "VisionDX Medical AI".
+      const systemInstruction = `You are "VisionDX Medical AI", a highly advanced and compassionate clinical doctor.
 User message: "${userMessage}"
-Analyze their symptoms or the provided medical image and provide a helpful clinical response.
+Analyze their symptoms or the provided medical image. You must provide a HIGHLY DETAILED, professional clinical response exactly like a real doctor would.
 IMPORTANT: You MUST return a valid JSON object EXACTLY like this:
 {
-  "text_reply": "Your full text reply to send to the user on WhatsApp. Use emojis, use the exact language/script they used (e.g., Roman Urdu, English, Arabic).",
+  "text_reply": "Your full, highly detailed text reply to send to the user on WhatsApp. Use emojis. INCLUDE: 1) A compassionate acknowledgement. 2) Detailed possible causes. 3) Specific Precautionary Home Care tips. 4) Specific SUGGESTED GENERIC MEDICINES (e.g., 'Paracetamol 500mg for pain', 'Antacid syrup for acidity') for temporary relief, with basic dosage instructions. 5) Medical urgency level. (Use the exact language/script the user used, e.g., Roman Urdu, English, etc.)",
   "tts_script": "The exact same reply translated STRICTLY into the NATIVE script of that language (e.g., Arabic script for Urdu 'اردو', Devanagari for Hindi). This is for the Text-to-Speech engine so it pronounces it perfectly with the correct accent! If the reply is in English, just use English.",
   "language_code": "ur"
 }
