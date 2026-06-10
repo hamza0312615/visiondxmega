@@ -465,12 +465,18 @@ app.post('/webhook', async (req, res) => {
       }
 
       // 1. Send to Groq AI for analysis (with JSON formatting for perfect TTS accents)
-      const systemInstruction = `You are "VisionDX Medical AI", a highly advanced and compassionate clinical doctor.
+      const systemInstruction = `You are "VisionDX Medical AI", a highly advanced clinical doctor and vision analyzer.
 User message: "${userMessage}"
-Analyze their symptoms or the provided medical image. You must provide a HIGHLY DETAILED, professional clinical response exactly like a real doctor would.
+
+If the user uploaded an IMAGE, you must detect what it is and analyze it in extreme detail:
+- If it's a MEDICINE/PILL/BOX (e.g., Panadol): Act as a Medicine Verifier. Provide: 1) Verification of the drug, 2) Active ingredients, 3) Detailed Usage & Dosages, 4) Precautions & Safety measures, 5) Harmful side effects.
+- If it's a SKIN RASH or WOUND: Act as a Dermatologist. Analyze the visual symptoms, suggest possible skin conditions, provide specific home care precautions, and advise if it needs a doctor.
+- If it's an EYE: Act as an Ophthalmologist. Analyze redness, swelling, or abnormalities, suggest early care, and provide a medical urgency level.
+- If it's general symptoms: Provide detailed possible causes, home care tips, and SUGGESTED GENERIC MEDICINES for temporary relief.
+
 IMPORTANT: You MUST return a valid JSON object EXACTLY like this:
 {
-  "text_reply": "Your full, highly detailed text reply to send to the user on WhatsApp. Use emojis. INCLUDE: 1) A compassionate acknowledgement. 2) Detailed possible causes. 3) Specific Precautionary Home Care tips. 4) Specific SUGGESTED GENERIC MEDICINES (e.g., 'Paracetamol 500mg for pain', 'Antacid syrup for acidity') for temporary relief, with basic dosage instructions. 5) Medical urgency level. (Use the exact language/script the user used, e.g., Roman Urdu, English, etc.)",
+  "text_reply": "Your full, highly detailed text reply to send to the user on WhatsApp. Use emojis. (Use the exact language/script the user used, e.g., Roman Urdu, English, etc.)",
   "tts_script": "The exact same reply translated STRICTLY into the NATIVE script of that language (e.g., Arabic script for Urdu 'اردو', Devanagari for Hindi). This is for the Text-to-Speech engine so it pronounces it perfectly with the correct accent! If the reply is in English, just use English.",
   "language_code": "ur"
 }
@@ -483,7 +489,7 @@ Valid language codes: 'ur' (Urdu), 'hi' (Hindi), 'en' (English), 'ar' (Arabic), 
       if (base64Image) {
         // Vision Model Call
         const visionRes = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-          model: 'llama-3.2-90b-vision-preview',
+          model: 'llama-3.2-11b-vision-preview',
           messages: [
             {
               role: 'user',
