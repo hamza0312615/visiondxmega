@@ -344,6 +344,238 @@ This is an AI-generated clinical simulation for educational purposes. Please con
   }
 });
 
+// ── WhatsApp Webhook (Meta Verification) ──────────────────────────────────────
+app.get('/webhook', (req, res) => {
+  const verifyToken = process.env.WEBHOOK_VERIFY_TOKEN;
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  if (mode && token) {
+    if (mode === 'subscribe' && token === verifyToken) {
+      console.log('[Meta Webhook] Verified successfully!');
+      res.status(200).send(challenge);
+    } else {
+      res.sendStatus(403);
+    }
+  } else {
+    res.status(400).send('Missing parameters');
+  }
+});
+
+// ── WhatsApp Webhook (Incoming Messages) ──────────────────────────────────────
+app.post('/webhook', async (req, res) => {
+  // Acknowledge receipt to Meta immediately
+  res.sendStatus(200);
+
+  const body = req.body;
+
+  if (body.object === 'whatsapp_business_account') {
+    try {
+      const entry = body.entry?.[0];
+      const changes = entry?.changes?.[0];
+      const message = changes?.value?.messages?.[0];
+      
+      if (!message) return;
+
+      const userPhone = message.from;
+      const groqKey = process.env.GROQ_API_KEY;
+      const metaToken = process.env.META_ACCESS_TOKEN;
+      const phoneId = process.env.META_PHONE_NUMBER_ID;
+
+      if (!groqKey || !metaToken || !phoneId) {
+        console.error('[WhatsApp Incoming] Missing API keys to process message.');
+        return;
+      }
+
+      let userMessage = "";
+      let base64Image = null;
+
+      // ── Handle Incoming Image ─────────────────────────────────────────────────
+      if (message.type === 'image') {
+        const imageId = message.image.id;
+        userMessage = message.image.caption || "Please analyze this medical image.";
+        console.log(`[WhatsApp Incoming] Image received from ${userPhone} with caption: "${userMessage}"`);
+
+        // Fetch image URL from Meta
+        const mediaUrlRes = await axios.get(`https://graph.facebook.com/v19.0/${imageId}`, {
+          headers: { 'Authorization': `Bearer ${metaToken}` }
+        });
+        
+        // Download binary image data
+        const mediaFileRes = await axios.get(mediaUrlRes.data.url, {
+          headers: { 'Authorization': `Bearer ${metaToken}` },
+          responseType: 'arraybuffer'
+        });
+        
+        const mimeType = mediaUrlRes.data.mime_type || 'image/jpeg';
+        base64Image = `data:${mimeType};base64,${Buffer.from(mediaFileRes.data, 'binary').toString('base64')}`;
+      } 
+      // ── Handle Incoming Audio/Voice Note ──────────────────────────────────────
+      else if (message.type === 'audio' || message.type === 'voice') {
+        const audioId = message.type === 'audio' ? message.audio.id : message.voice.id;
+        console.log(`[WhatsApp Incoming] Voice note received from ${userPhone}. Transcribing...`);
+
+        // Fetch audio URL from Meta
+        const mediaUrlRes = await axios.get(`https://graph.facebook.com/v19.0/${audioId}`, {
+          headers: { 'Authorization': `Bearer ${metaToken}` }
+        });
+
+        // Download binary audio data
+        const mediaFileRes = await axios.get(mediaUrlRes.data.url, {
+          headers: { 'Authorization': `Bearer ${metaToken}` },
+          responseType: 'arraybuffer'
+        });
+
+        // Use native fetch to upload to Groq Whisper
+        const audioBlob = new Blob([Buffer.from(mediaFileRes.data, 'binary')], { type: 'audio/ogg' });
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'voice.ogg');
+        formData.append('model', 'whisper-large-v3');
+
+        const whisperRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${groqKey}` },
+          body: formData
+        });
+        const whisperData = await whisperRes.json();
+        userMessage = whisperData.text || "Voice note could not be transcribed.";
+        console.log(`[WhatsApp Incoming] Transcribed Voice Note: "${userMessage}"`);
+      } 
+      // ── Handle Incoming Text ──────────────────────────────────────────────────
+      else if (message.type === 'text') {
+        userMessage = message.text.body;
+        console.log(`[WhatsApp Incoming] Text from ${userPhone}: "${userMessage}"`);
+      } else {
+        console.log(`[WhatsApp Incoming] Unsupported message type: ${message.type}`);
+        return;
+      }
+
+      // 1. Send to Groq AI for analysis (with JSON formatting for perfect TTS accents)
+      const systemInstruction = `You are a clinical AI assistant for "VisionDX Medical AI".
+User message: "${userMessage}"
+Analyze their symptoms or the provided medical image and provide a helpful clinical response.
+IMPORTANT: You MUST return a valid JSON object EXACTLY like this:
+{
+  "text_reply": "Your full text reply to send to the user on WhatsApp. Use emojis, use the exact language/script they used (e.g., Roman Urdu, English, Arabic).",
+  "tts_script": "The exact same reply translated STRICTLY into the NATIVE script of that language (e.g., Arabic script for Urdu 'اردو', Devanagari for Hindi). This is for the Text-to-Speech engine so it pronounces it perfectly with the correct accent! If the reply is in English, just use English.",
+  "language_code": "ur"
+}
+Valid language codes: 'ur' (Urdu), 'hi' (Hindi), 'en' (English), 'ar' (Arabic), 'bn' (Bengali), 'pa' (Punjabi), 'ps' (Pashto), 'sd' (Sindhi).`;
+
+      let aiResponseText = "";
+      let aiTtsScript = "";
+      let voiceLangCode = "en";
+
+      if (base64Image) {
+        // Vision Model Call
+        const visionRes = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+          model: 'llama-3.2-90b-vision-preview',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: systemInstruction },
+                { type: 'image_url', image_url: { url: base64Image } }
+              ]
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.3
+        }, { headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' } });
+        
+        const parsed = JSON.parse(visionRes.data.choices[0].message.content);
+        aiResponseText = parsed.text_reply;
+        aiTtsScript = parsed.tts_script;
+        voiceLangCode = parsed.language_code;
+      } else {
+        // Text Model Call
+        const textRes = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: systemInstruction }],
+          response_format: { type: "json_object" },
+          temperature: 0.3
+        }, { headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' } });
+        
+        const parsed = JSON.parse(textRes.data.choices[0].message.content);
+        aiResponseText = parsed.text_reply;
+        aiTtsScript = parsed.tts_script;
+        voiceLangCode = parsed.language_code;
+      }
+
+      // 2. Format the WhatsApp Text Response
+      const messageBody = `*🌟 VisionDX Medical AI Analysis 🌟*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗣️ *Your Message/Image:* _"${userMessage}"_
+
+*🩺 AI Clinical Advice:*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+${aiResponseText}
+
+*⚠️ Important Medical Disclaimer*
+This is an AI-generated simulation for educational purposes. Always consult a certified healthcare professional.`;
+
+      const metaUrl = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
+
+      // 3. Send Text Reply
+      await axios.post(metaUrl, {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: userPhone,
+        type: 'text',
+        text: { preview_url: false, body: messageBody }
+      }, { headers: { 'Authorization': `Bearer ${metaToken}` }});
+
+      // 4. Generate & Send Voice Note using Edge TTS (Using the native script!)
+      console.log(`[Meta API] Generating TTS Voice Note (Lang: ${voiceLangCode})...`);
+      const voiceName = EDGE_VOICES[voiceLangCode.toLowerCase()] || EDGE_VOICES['hi'];
+      
+      const tts = new MsEdgeTTS();
+      await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
+      
+      // Clean up native text for TTS (remove emojis and markdown)
+      const cleanTtsText = aiTtsScript.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').replace(/[*_~`]/g, '').trim();
+      const { audioStream } = tts.toStream(cleanTtsText);
+      
+      const chunks = [];
+      await new Promise((resolve, reject) => {
+        audioStream.on('data', (c) => chunks.push(c));
+        audioStream.on('end', resolve);
+        audioStream.on('error', reject);
+      });
+      
+      const audioBuffer = Buffer.concat(chunks);
+      const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+      const formData = new FormData();
+      formData.append('messaging_product', 'whatsapp');
+      formData.append('file', audioBlob, 'reply_audio.mp3');
+
+      // Upload Media
+      const uploadRes = await fetch(`https://graph.facebook.com/v19.0/${phoneId}/media`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${metaToken}` },
+        body: formData
+      });
+      const uploadData = await uploadRes.json();
+      
+      if (uploadData.id) {
+        // Send Audio
+        await axios.post(metaUrl, {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: userPhone,
+          type: 'audio',
+          audio: { id: uploadData.id }
+        }, { headers: { 'Authorization': `Bearer ${metaToken}` }});
+        console.log(`[Meta API] Auto-reply text and native-accent voice note delivered to ${userPhone}!`);
+      }
+
+    } catch (err) {
+      console.error('[WhatsApp Incoming] Error processing message:', err.response?.data || err.message);
+    }
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`\n🚀 [VisionDX Backend] Server running at http://localhost:${PORT}`);
   console.log(`🎙️  [TTS Engine] Microsoft Edge Neural TTS (FREE - No API key required)`);
