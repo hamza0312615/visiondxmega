@@ -128,9 +128,10 @@ export default function EyePredictor() {
       const eyeConditions = diseaseData.eye || {}
       let matchedCondition = null
       let matchedKey = ''
+      const lowerCaseResponse = aiResponse.toLowerCase()
 
       for (const [key, data] of Object.entries(eyeConditions)) {
-        if (aiResponse.toLowerCase().includes(key.toLowerCase())) {
+        if (lowerCaseResponse.includes(key.toLowerCase())) {
           matchedCondition = data
           matchedKey = key
           break
