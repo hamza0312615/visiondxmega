@@ -58,6 +58,7 @@ import {
 
 console.log('🧪 Starting VisionDX Mega Local Storage Utility Tests...')
 
+async function runTests() {
 try {
   // Test 1: Global Demo Mode Flags
   console.log('\n  Running Test 1: Global Demo Mode Flags...')
@@ -74,6 +75,8 @@ try {
   assert.deepStrictEqual(getHistory(), [], 'History should be empty after clearHistory')
   
   const entry1 = saveResult('eye', { summary: 'Eye scan demo', details: { condition: 'Cataract' } })
+  // Sleep briefly so Date.now() has time to change for the second entry id
+  await new Promise(r => setTimeout(r, 10))
   const entry2 = saveResult('skin', { summary: 'Skin scan demo', details: { condition: 'Eczema' } })
   
   const history = getHistory()
@@ -163,3 +166,5 @@ try {
   console.error(err)
   process.exit(1)
 }
+}
+runTests()
