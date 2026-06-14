@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { analyzeImage } from '../utils/groqApi'
-import { saveResult, isDemoMode, setDemoMode, getApiKey } from '../utils/localStorage'
+import { saveResult, getHistoryByType, formatTime, isDemoMode, setDemoMode } from '../utils/localStorage'
+import { hasAnyApiKey, triggerFallbackMode } from '../utils/fallback'
 import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import diseaseData from '../data/disease_data.json'
 import { demoPresets } from '../data/demoPresets'
@@ -104,16 +105,13 @@ export default function SkinAnalyzer() {
 
     // Preset simulated fallback mode if API keys are missing
     const activePreset = forcePreset || presetData
-    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
-    if (activePreset && activeFile.name === activePreset.fileName && !hasKey) {
-      setTimeout(() => {
-        const saved = saveResult('skin', activePreset.fallbackResult)
-        setCurrentResult(saved)
-        setLoading(false)
-        if (localStorage.getItem('visiondx_autopilot') === 'active') {
-          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'skin', result: saved } }))
-        }
-      }, 1500)
+    if (activePreset && activeFile.name === activePreset.fileName && !hasAnyApiKey()) {
+      triggerFallbackMode({
+        type: 'skin',
+        fallbackResult: activePreset.fallbackResult,
+        setLoading,
+        setCurrentResult
+      })
       return
     }
 
