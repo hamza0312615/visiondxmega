@@ -1,4 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -225,9 +226,9 @@ async def analyze_wound_endpoint(image: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Image too large (max 15 MB)")
 
     try:
-        result = analyze_wound(data)
+        result = await run_in_threadpool(analyze_wound, data)
         # Save the original image to disk
-        image_url = save_image(data, image.filename or "wound.png")
+        image_url = await run_in_threadpool(save_image, data, image.filename or "wound.png")
         result["imageUrl"] = image_url
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis error: {str(e)}")
