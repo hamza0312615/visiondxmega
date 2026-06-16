@@ -176,9 +176,10 @@ export default function SleepAnalyzer() {
     }
 
     let quality = 'Good Quality'
-    if (aiResponse.toLowerCase().includes('excellent')) quality = 'Excellent Quality'
-    else if (aiResponse.toLowerCase().includes('poor')) quality = 'Poor Quality'
-    else if (aiResponse.toLowerCase().includes('dangerous') || aiResponse.toLowerCase().includes('apnea')) quality = 'High Apnea Risk'
+    const lowerCaseResponse = aiResponse.toLowerCase()
+    if (lowerCaseResponse.includes('excellent')) quality = 'Excellent Quality'
+    else if (lowerCaseResponse.includes('poor')) quality = 'Poor Quality'
+    else if (lowerCaseResponse.includes('dangerous') || lowerCaseResponse.includes('apnea')) quality = 'High Apnea Risk'
 
     let urgency = 'NORMAL'
     if (aiResponse.includes('EMERGENCY')) urgency = 'EMERGENCY'

@@ -234,7 +234,8 @@ Be thorough, specific, and accurate. If the image is blurry or text is hard to r
       }
 
       let fakeRisk = activeTab === 'manual' ? 'N/A (Manual Search)' : 'Low Risk (Appears Authentic)'
-      if (activeTab !== 'manual' && (aiResponse.toLowerCase().includes('counterfeit') || aiResponse.toLowerCase().includes('irregularit') || aiResponse.toLowerCase().includes('fake') || aiResponse.toLowerCase().includes('suspicious') || aiResponse.toLowerCase().includes('inconsisten'))) {
+      const lowerCaseResponse = aiResponse.toLowerCase()
+      if (activeTab !== 'manual' && (lowerCaseResponse.includes('counterfeit') || lowerCaseResponse.includes('irregularit') || lowerCaseResponse.includes('fake') || lowerCaseResponse.includes('suspicious') || lowerCaseResponse.includes('inconsisten'))) {
         fakeRisk = 'High Risk / Potential Counterfeit Irregularities Detected'
       }
 
