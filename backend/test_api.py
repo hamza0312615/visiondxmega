@@ -136,3 +136,10 @@ def test_analyze_wound_invalid_image():
     """analyze_wound should raise ValueError for invalid bytes."""
     with pytest.raises(ValueError, match="Could not decode image"):
         analyze_wound(b"not-an-image")
+
+def test_analyze_wound_endpoint_invalid_image():
+    """POST /api/analyze-wound with invalid image bytes should return 500."""
+    files = {"image": ("not-an-image.png", b"invalid-bytes", "image/png")}
+    response = client.post("/api/analyze-wound", files=files)
+    assert response.status_code == 500
+    assert "Analysis error: Could not decode image" in response.json()["detail"]
