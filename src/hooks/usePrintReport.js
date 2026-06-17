@@ -1,5 +1,18 @@
 import { formatTime } from '../utils/localStorage'
 
+function escapeHTML(str) {
+  if (typeof str !== 'string') return str;
+  return str.replace(/[&<>'"]/g,
+    tag => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[tag] || tag)
+  );
+}
+
 export function usePrintReport() {
   const printReport = (moduleName, data) => {
     if (!data) return
@@ -156,25 +169,25 @@ export function usePrintReport() {
       <div class="patient-details-grid">
         <div>
           <div class="detail-label">Patient Name</div>
-          <div class="detail-value">${patientName}</div>
+          <div class="detail-value">${escapeHTML(String(patientName))}</div>
         </div>
         <div>
           <div class="detail-label">Age / Gender</div>
-          <div class="detail-value">${patientAge}y / ${patientGender}</div>
+          <div class="detail-value">${escapeHTML(String(patientAge))}y / ${escapeHTML(String(patientGender))}</div>
         </div>
         <div>
           <div class="detail-label">Diagnostic Module</div>
-          <div class="detail-value" style="color: #00d4aa; text-transform: uppercase;">${moduleName}</div>
+          <div class="detail-value" style="color: #00d4aa; text-transform: uppercase;">${escapeHTML(String(moduleName))}</div>
         </div>
       </div>
       
       <div class="print-badge ${urgencyClass}">
-        Urgency Level: ${urgencyLabel}
+        Urgency Level: ${escapeHTML(String(urgencyLabel))}
       </div>
       
-      <div style="font-size: 11px; color: #707070; margin-bottom: 10px;">Scanned on ${formattedDate}</div>
+      <div style="font-size: 11px; color: #707070; margin-bottom: 10px;">Scanned on ${escapeHTML(String(formattedDate))}</div>
       
-      <div class="print-body">${(data.rawResponse || data.summary || '')}</div>
+      <div class="print-body">${escapeHTML(String(data.rawResponse || data.summary || ''))}</div>
       
       <div class="print-footer">
         <div>Validated by: VisionDX Autonomous Triage Suite</div>
