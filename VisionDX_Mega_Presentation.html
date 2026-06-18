@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VisionDX Mega Presentation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/black.min.css">
+    <style>
+        .reveal h1, .reveal h2, .reveal h3 {
+            color: #4ade80; /* medical green */
+            text-transform: none;
+        }
+        .reveal .text-blue {
+            color: #3b82f6;
+        }
+        .reveal .text-white {
+            color: white;
+        }
+        .reveal p, .reveal li {
+            font-size: 0.8em;
+            line-height: 1.5;
+        }
+        .reveal .mermaid {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- Slide 1: Title -->
+            <section>
+                <h1>VisionDX Mega</h1>
+                <h3>AI-Powered Health Diagnostics</h3>
+                <p>Pakistan Ka Digital Doctor</p>
+            </section>
+
+            <!-- Slide 2: Overview -->
+            <section>
+                <h2>Platform Overview</h2>
+                <p>VisionDX Mega is an advanced medical diagnostics demonstration platform.</p>
+                <ul>
+                    <li>Empowered by cutting-edge AI models (Groq Llama 3.2, Gemini).</li>
+                    <li>Designed to provide comprehensive health assessments.</li>
+                    <li>Supports multiple languages (e.g., Urdu, English).</li>
+                    <li>Integrated with WhatsApp for widespread accessibility.</li>
+                </ul>
+            </section>
+
+            <!-- Slide 3: Mission -->
+            <section>
+                <h2>Core Mission</h2>
+                <p>Democratizing healthcare through AI-driven insights.</p>
+                <ul>
+                    <li><strong>AI Modules:</strong> 10+ specialized diagnostic engines.</li>
+                    <li><strong>Privacy-First:</strong> Local storage and secure API key management.</li>
+                    <li><strong>Accessibility:</strong> Reach patients where they are, online or offline via WhatsApp.</li>
+                </ul>
+            </section>
+
+            <!-- Slide 4: Diagnostic Suite -->
+            <section>
+                <h2>Comprehensive Diagnostic Suite</h2>
+                <p>A unified platform for holistic health evaluation:</p>
+                <ul>
+                    <li>Cough Detector & Sleep Analyzer</li>
+                    <li>Medicine & Lab Report Analyzer</li>
+                    <li>Hair & Daily Routine Analyzer</li>
+                    <li>Sign Language Translator</li>
+                    <li>Offline Agent capabilities</li>
+                </ul>
+            </section>
+
+            <!-- Slide 5: Eye Predictor -->
+            <section>
+                <h2>Eye Predictor Module</h2>
+                <p>Early detection of ocular conditions through image analysis.</p>
+                <ul>
+                    <li>Analyzes high-resolution eye images.</li>
+                    <li>Identifies potential signs of cataracts, conjunctivitis, and other ailments.</li>
+                    <li>Provides actionable insights and recommendations.</li>
+                </ul>
+            </section>
+
+            <!-- Slide 6: Skin Analyzer -->
+            <section>
+                <h2>Skin Analyzer Module</h2>
+                <p>Dermatological assessment powered by computer vision.</p>
+                <ul>
+                    <li>Detects rashes, lesions, and abnormal moles.</li>
+                    <li>Classifies skin conditions with high accuracy.</li>
+                    <li>Generates detailed reports for further medical review.</li>
+                </ul>
+            </section>
+
+            <!-- Slide 7: Wound Tracker -->
+            <section>
+                <h2>Wound Tracker Module</h2>
+                <p>Continuous monitoring of wound healing progress.</p>
+                <ul>
+                    <li>Tracks wound size, color, and severity over time.</li>
+                    <li>Alerts users to potential infections or stalled healing.</li>
+                    <li>Creates a visual history for healthcare providers.</li>
+                </ul>
+            </section>
+
+            <!-- Slide 8: Architecture Diagram -->
+            <section>
+                <h2>High-Level Architecture</h2>
+                <div class="mermaid">
+                    graph TD
+                    A[User / Frontend] --> B(React App & Tailwind CSS)
+                    B --> C{API Gateway}
+                    C --> D[Groq Llama 3.2 / Whisper]
+                    C --> E[Google Gemini API]
+                    B --> F(Local Storage)
+                    G[WhatsApp Users] --> H[WhatsApp Backend]
+                    H --> C
+                </div>
+            </section>
+
+            <!-- Slide 9: Tech Stack -->
+            <section>
+                <h2>Technology Stack</h2>
+                <p>Built with modern, scalable, and secure technologies:</p>
+                <ul>
+                    <li><strong>Frontend:</strong> React 18, Vite, Tailwind CSS</li>
+                    <li><strong>AI Engines:</strong> Groq Llama 3.2, Google Gemini, Whisper AI</li>
+                    <li><strong>Routing:</strong> React Router DOM</li>
+                    <li><strong>Integration:</strong> WhatsApp Business API</li>
+                </ul>
+            </section>
+
+            <!-- Slide 10: Conclusion -->
+            <section>
+                <h2>Conclusion</h2>
+                <p>VisionDX Mega represents the future of accessible, AI-assisted healthcare diagnostics.</p>
+                <ul>
+                    <li>Continuously evolving AI capabilities.</li>
+                    <li>Expanding reach to underserved communities.</li>
+                    <li>Bridging the gap between technology and medical expertise.</li>
+                </ul>
+                <p style="font-size: 0.6em; margin-top: 2em; color: gray;">
+                    Disclaimer: VisionDX Mega is not a substitute for professional medical advice.
+                </p>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.js"></script>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: true,
+            transition: 'slide'
+        });
+    </script>
+</body>
+</html>
