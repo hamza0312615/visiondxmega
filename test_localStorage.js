@@ -74,6 +74,8 @@ try {
   assert.deepStrictEqual(getHistory(), [], 'History should be empty after clearHistory')
   
   const entry1 = saveResult('eye', { summary: 'Eye scan demo', details: { condition: 'Cataract' } })
+  // Add tiny delay to ensure unique IDs if they use Date.now()
+  await new Promise(r => setTimeout(r, 10))
   const entry2 = saveResult('skin', { summary: 'Skin scan demo', details: { condition: 'Eczema' } })
   
   const history = getHistory()
