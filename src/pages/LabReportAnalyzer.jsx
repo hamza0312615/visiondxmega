@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { analyzeImage, analyzeText } from '../utils/groqApi'
-import { saveResult, isDemoMode, setDemoMode, getApiKey } from '../utils/localStorage'
+import { saveResult, isDemoMode, setDemoMode } from '../utils/localStorage'
+import { hasAnyApiKey, handleSimulationFallback } from '../utils/analyzerUtils'
 import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
@@ -176,17 +177,13 @@ export default function LabReportAnalyzer() {
 
     // Preset simulated fallback mode if API keys are missing
     const activePreset = forcePreset || presetData
-    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
-    if (activePreset && activeFile && activeFile.name === activePreset.fileName && !hasKey) {
-      setTimeout(() => {
-        const saved = saveResult('lab', activePreset.fallbackResult)
-        setCurrentResult(saved)
-        setLoading(false)
-        
-        if (localStorage.getItem('visiondx_autopilot') === 'active') {
-          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'lab', result: saved } }))
-        }
-      }, 1500)
+    if (activePreset && activeFile && activeFile.name === activePreset.fileName && !hasAnyApiKey()) {
+      handleSimulationFallback({
+        type: 'lab',
+        fallbackResult: activePreset.fallbackResult,
+        setLoading,
+        setCurrentResult
+      })
       return
     }
 
