@@ -111,6 +111,32 @@
           "woundId": "486c9730-d6ed-4904-add9-aa5197d4e691"
         }
       ]
+    },
+    {
+      "patientId": "test-patient",
+      "woundType": "Test Wound",
+      "location": "Left arm",
+      "initialDate": "2024-01-01",
+      "currentStatus": "stable",
+      "recommendations": [
+        "Keep dry"
+      ],
+      "id": "491918a0-69e4-4818-8f98-4792da51f77d",
+      "createdAt": "2026-06-09T05:35:17.381034",
+      "measurements": []
+    },
+    {
+      "patientId": "test-patient-comp",
+      "woundType": "Pressure Ulcer",
+      "location": "Heel",
+      "initialDate": "2024-03-10",
+      "currentStatus": "stable",
+      "recommendations": [
+        "Offload pressure"
+      ],
+      "id": "cc88f2a3-d41d-440d-9167-72c715221471",
+      "createdAt": "2026-06-09T05:35:17.403180",
+      "measurements": []
     }
   ]
 }
