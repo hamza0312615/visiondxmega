@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import bcrypt from 'bcryptjs'
 
 export default function AuthScreen({ onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(true)
@@ -28,21 +29,28 @@ export default function AuthScreen({ onLoginSuccess }) {
         const storedUser = localStorage.getItem('visiondx_user')
         if (storedUser) {
           const user = JSON.parse(storedUser)
-          if (user.email === email && user.password === password) {
+          if (user.email === email && bcrypt.compareSync(password, user.password)) {
             localStorage.setItem('visiondx_auth_token', 'session_active')
             onLoginSuccess(user)
+            setLoading(false)
+            return
+          } else if (user.email === email) {
+            setError('Invalid credentials.')
             setLoading(false)
             return
           }
         }
         
         // Default guest user login or auto-register if first time
+        const salt = bcrypt.genSaltSync(10)
+        const hashedPassword = bcrypt.hashSync(password, salt)
+
         const defaultUser = {
           name: email.split('@')[0] || 'User',
           age: '28',
           gender: 'Male',
           email,
-          password
+          password: hashedPassword
         }
         localStorage.setItem('visiondx_user', JSON.stringify(defaultUser))
         localStorage.setItem('visiondx_auth_token', 'session_active')
@@ -54,12 +62,15 @@ export default function AuthScreen({ onLoginSuccess }) {
           return
         }
 
+        const salt = bcrypt.genSaltSync(10)
+        const hashedPassword = bcrypt.hashSync(password, salt)
+
         const newUser = {
           name,
           age,
           gender,
           email,
-          password
+          password: hashedPassword
         }
 
         localStorage.setItem('visiondx_user', JSON.stringify(newUser))
