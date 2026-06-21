@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { analyzeText, transcribeAudio } from '../utils/groqApi'
 import { saveResult, getHistoryByType, formatTime, isDemoMode, setDemoMode, getDemoData, getApiKey } from '../utils/localStorage'
+import { isApiKeyMissing, executeFallback } from '../utils/fallback'
 import { useSaveToCHW } from '../hooks/useSaveToCHW'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
@@ -96,16 +97,15 @@ export default function SleepAnalyzer() {
     setLoadingMsg('Analyzing sleep cycles, apnea risks, and calculating sleep score...')
 
     // Preset simulated fallback mode if API keys are missing
-    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
-    if (!hasKey) {
-      setTimeout(() => {
-        const saved = saveResult('sleep', demoPresets.sleep[0].fallbackResult)
-        setCurrentResult(saved)
-        setLoading(false)
-        if (localStorage.getItem('visiondx_autopilot') === 'active') {
-          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'sleep', result: saved } }))
+    if (isApiKeyMissing()) {
+      executeFallback({
+        type: 'sleep',
+        fallbackResult: demoPresets.sleep[0].fallbackResult,
+        onComplete: (saved) => {
+          setCurrentResult(saved)
+          setLoading(false)
         }
-      }, 1500)
+      })
       return
     }
 
@@ -136,16 +136,15 @@ export default function SleepAnalyzer() {
     setCurrentResult(null)
 
     // Preset simulated fallback mode if API keys are missing
-    const hasKey = getApiKey() || localStorage.getItem('visiondx_gemini_key')
-    if (!hasKey) {
-      setTimeout(() => {
-        const saved = saveResult('sleep', demoPresets.sleep[0].fallbackResult)
-        setCurrentResult(saved)
-        setLoading(false)
-        if (localStorage.getItem('visiondx_autopilot') === 'active') {
-          window.dispatchEvent(new CustomEvent('autopilot-result-ready', { detail: { type: 'sleep', result: saved } }))
+    if (isApiKeyMissing()) {
+      executeFallback({
+        type: 'sleep',
+        fallbackResult: demoPresets.sleep[0].fallbackResult,
+        onComplete: (saved) => {
+          setCurrentResult(saved)
+          setLoading(false)
         }
-      }, 1500)
+      })
       return
     }
 
