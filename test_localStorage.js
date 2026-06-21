@@ -35,7 +35,12 @@ global.window = {
   dispatchEvent(event) {}
 }
 
-// 2. Import Module
+// 2. Mock Date.now() to prevent ID collisions
+const originalDateNow = Date.now;
+let mockNow = originalDateNow();
+Date.now = () => mockNow++;
+
+// 3. Import Module
 import {
   isDemoMode,
   setDemoMode,
