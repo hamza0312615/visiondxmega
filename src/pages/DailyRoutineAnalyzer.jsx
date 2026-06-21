@@ -3,7 +3,6 @@ import { analyzeText } from '../utils/groqApi'
 import { saveResult, isDemoMode, setDemoMode, getDemoData, getApiKey } from '../utils/localStorage'
 import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
-import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
 
 export default function DailyRoutineAnalyzer() {
