@@ -1,14 +1,13 @@
 /**
- * VisionDX Mega — Unified Text-to-Speech (TTS) Service
+ * VisionDX Mega — Unified Text-to-Speech (TTS) Service (Vercel Fixed)
  *
  * Priority chain (best quality first):
- *   1. Microsoft Edge Neural TTS (via local backend proxy)
- *      → FREE, no API key, no Google Console
- *      → Supports: ur-PK-UzmaNeural, ps-AF-LatifaNeural, sd-PK-SanaNeural,
- *                  hi-IN-SwaraNeural, ar-SA-ZariyahNeural, pa-IN-VaaniNeural,
- *                  bn-IN-TanishaaNeural, en-US-JennyNeural
- *   2. ElevenLabs API (eleven_multilingual_v2 — premium English/other)
- *   3. Browser native speechSynthesis (absolute last resort)
+ * 1. Microsoft Edge Neural TTS (via local backend proxy if available)
+ * → FREE, no API key, no Google Console
+ * 2. Google Translate Public TTS Proxy (Vercel Safe Sub-Route)
+ * → FREE, client-side streaming, no serverless timeout errors
+ * 3. ElevenLabs API (eleven_multilingual_v2 — premium English/other)
+ * 4. Browser native speechSynthesis (absolute last resort)
  */
 
 import { getApiKey } from './localStorage'
@@ -84,19 +83,17 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
   cancelSpeech()
 
   const backendUrl = import.meta.env.VITE_WA_BACKEND_URL || 'http://localhost:3001'
-  const edgeEnabled = import.meta.env.VITE_EDGE_TTS_ENABLED !== 'false'
+  const isVercelProduction = window.location.hostname.includes('vercel.app')
+  const edgeEnabled = import.meta.env.VITE_EDGE_TTS_ENABLED !== 'false' && !isVercelProduction
   const edgeLang = LANG_TO_EDGE_CODE[langCode] || LANG_TO_EDGE_CODE[langCode.split('-')[0]] || 'en'
 
-  // ── 1. Microsoft Edge Neural TTS (Primary — FREE, best quality for South Asian langs) ──
+  // ── 1. Microsoft Edge Neural TTS (Primary — skipped automatically if on Vercel to avoid CORS breakdown) ──
   if (edgeEnabled) {
     try {
-      // Edge TTS supports up to ~5000 chars in a single request — no chunking needed
       const url = `${backendUrl}/api/tts?lang=${edgeLang}&text=${encodeURIComponent(cleanText)}`
-
       const audio = new Audio(url)
       currentAudio = audio
 
-      // Wait for the audio to be ready before firing onStart
       await new Promise((resolve, reject) => {
         audio.oncanplaythrough = resolve
         audio.onerror = reject
@@ -107,10 +104,7 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
         if (onStart) onStart()
         console.log(`✅ [Edge Neural TTS] ${edgeLang} → playing "${cleanText.substring(0, 50)}..."`)
       }
-      audio.onended = () => {
-        if (onEnd) onEnd()
-        currentAudio = null
-      }
+      audio.onended = () => { if (onEnd) onEnd(); currentAudio = null }
       audio.onerror = (e) => {
         console.error('[Edge TTS] Playback error:', e)
         if (onError) onError(e)
@@ -120,11 +114,34 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
       await audio.play()
       return
     } catch (err) {
-      console.warn('[Edge TTS] Failed (backend may not be running), trying ElevenLabs:', err.message)
+      console.warn('[Edge TTS] Failed or bypassed, trying alternative pipelines...', err.message)
     }
   }
 
-  // ── 2. ElevenLabs API (Secondary — premium multilingual) ──────────────────
+  // ── 2. Google Translate Client-Side Public TTS (Vercel Backup Strategy — FREE & Reliable) ──
+  try {
+    console.log(`[Google TTS Proxy] Safely routing client-side audio fallback...`)
+    // Maps your language dictionary into clean ISO standard tags for streaming directly to standard DOM components
+    const queryLang = edgeLang === 'ur-roman' ? 'hi' : edgeLang
+    const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${queryLang}&client=tw-ob&q=${encodeURIComponent(cleanText)}`
+    
+    const audio = new Audio(googleTtsUrl)
+    currentAudio = audio
+
+    audio.onplay = () => {
+      if (onStart) onStart()
+      console.log(`✅ [Google Proxy TTS] Streamed online language text context: ${queryLang}`)
+    }
+    audio.onended = () => { if (onEnd) onEnd(); currentAudio = null }
+    audio.onerror = (e) => { throw new Error('Google Stream Blocked') }
+
+    await audio.play()
+    return
+  } catch (proxyErr) {
+    console.warn('[Google Proxy TTS] Bypassed, matching down to ElevenLabs/Native workflows.')
+  }
+
+  // ── 3. ElevenLabs API (Secondary — premium multilingual) ──────────────────
   const elevenKey = import.meta.env.VITE_ELEVENLABS_API_KEY
     || localStorage.getItem('visiondx_elevenlabs_key')
     || ''
@@ -173,7 +190,7 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
     }
   }
 
-  // ── 3. Browser native speechSynthesis (Last resort) ───────────────────────
+  // ── 4. Browser native speechSynthesis (Last resort) ───────────────────────
   fallbackToNativeTTS(cleanText, langCode, onStart, onEnd, onError)
 }
 
