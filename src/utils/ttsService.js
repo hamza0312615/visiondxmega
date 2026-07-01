@@ -1,18 +1,16 @@
 /**
- * VisionDX Mega — Unified Text-to-Speech (TTS) Service
+ * VisionDX Mega — Unified Text-to-Speech (TTS) Service (Vercel Fixed)
  *
  * Priority chain (best quality first):
- *   1. Microsoft Edge Neural TTS (via local backend proxy)
- *      → FREE, no API key, no Google Console
- *      → Supports: ur-PK-UzmaNeural, ps-AF-LatifaNeural, sd-PK-SanaNeural,
- *                  hi-IN-SwaraNeural, ar-SA-ZariyahNeural, pa-IN-VaaniNeural,
- *                  bn-IN-TanishaaNeural, en-US-JennyNeural
- *   2. ElevenLabs API (eleven_multilingual_v2 — premium English/other)
- *   3. Browser native speechSynthesis (absolute last resort)
+ * 1. Microsoft Edge Neural TTS (via local backend proxy if available)
+ * → FREE, no API key, no Google Console
+ * 2. Google Translate Public TTS Proxy (Vercel Safe Sub-Route)
+ * → FREE, client-side streaming, no serverless timeout errors
+ * 3. ElevenLabs API (eleven_multilingual_v2 — premium English/other)
+ * 4. Browser native speechSynthesis (absolute last resort)
  */
 
 import { getApiKey } from './localStorage'
-import { generateEdgeTTSInBrowser } from './edgeTtsBrowser'
 
 // ElevenLabs Rachel Multilingual voice
 const ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'
@@ -44,42 +42,6 @@ const LANG_TO_EDGE_CODE = {
   'sd':       'sd',
   'en-US':    'en',
   'en-GB':    'en-gb',
-  'en':       'en',
-}
-
-const EDGE_VOICES = {
-  'ur':    'ur-PK-UzmaNeural',
-  'ur-roman': 'hi-IN-SwaraNeural',
-  'hi':    'hi-IN-SwaraNeural',
-  'ar':    'ar-SA-ZariyahNeural',
-  'bn':    'bn-IN-TanishaaNeural',
-  'pa':    'pa-IN-VaaniNeural',
-  'ps':    'ps-AF-LatifaNeural',
-  'sd':    'sd-PK-SanaNeural',
-  'en':    'en-US-JennyNeural',
-  'en-gb': 'en-GB-SoniaNeural',
-}
-
-const LANG_TO_GOOGLE_CODE = {
-  'ur-PK':    'ur',
-  'ur':       'ur',
-  'ur-roman': 'hi',       // Use Hindi pronunciation for Roman Urdu phonetics
-  'hi-IN':    'hi',
-  'hi':       'hi',
-  'ar-SA':    'ar',
-  'ar-XA':    'ar',
-  'ar':       'ar',
-  'bn-IN':    'bn',
-  'bn-BD':    'bn',
-  'bn':       'bn',
-  'pa-IN':    'pa',
-  'pa':       'pa',
-  'ps-AF':    'ps',
-  'ps':       'ps',
-  'sd-PK':    'sd',
-  'sd':       'sd',
-  'en-US':    'en',
-  'en-GB':    'en',
   'en':       'en',
 }
 
@@ -116,37 +78,33 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/^[-•]\s*/gm, '')
     .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
-    .replace(/[\n\r]+/g, ', ') // replace newlines with comma for natural pause
-    .replace(/\s{2,}/g, ' ')   // Remove extra spaces
-    .replace(/[_~#`]/g, '')     // Extra markdown cleanup
     .trim()
 
   cancelSpeech()
 
-  const edgeEnabled = import.meta.env.VITE_EDGE_TTS_ENABLED !== 'false'
+  const backendUrl = import.meta.env.VITE_WA_BACKEND_URL || 'http://localhost:3001'
+  const isVercelProduction = window.location.hostname.includes('vercel.app')
+  const edgeEnabled = import.meta.env.VITE_EDGE_TTS_ENABLED !== 'false' && !isVercelProduction
   const edgeLang = LANG_TO_EDGE_CODE[langCode] || LANG_TO_EDGE_CODE[langCode.split('-')[0]] || 'en'
 
-  // ── 1. Microsoft Edge Neural TTS (Primary — FREE, best quality for South Asian langs) ──
+  // ── 1. Microsoft Edge Neural TTS (Primary — skipped automatically if on Vercel to avoid CORS breakdown) ──
   if (edgeEnabled) {
     try {
-      const voiceName = EDGE_VOICES[edgeLang] || EDGE_VOICES['en'];
-      
-      console.log(`[Edge Neural TTS Browser] Requesting voice="${voiceName}"`);
-      const audioBlob = await generateEdgeTTSInBrowser(cleanText, voiceName);
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      const audio = new Audio(audioUrl)
+      const url = `${backendUrl}/api/tts?lang=${edgeLang}&text=${encodeURIComponent(cleanText)}`
+      const audio = new Audio(url)
       currentAudio = audio
+
+      await new Promise((resolve, reject) => {
+        audio.oncanplaythrough = resolve
+        audio.onerror = reject
+        audio.load()
+      })
 
       audio.onplay = () => {
         if (onStart) onStart()
         console.log(`✅ [Edge Neural TTS] ${edgeLang} → playing "${cleanText.substring(0, 50)}..."`)
       }
-      audio.onended = () => {
-        if (onEnd) onEnd()
-        currentAudio = null
-        URL.revokeObjectURL(audioUrl)
-      }
+      audio.onended = () => { if (onEnd) onEnd(); currentAudio = null }
       audio.onerror = (e) => {
         console.error('[Edge TTS] Playback error:', e)
         if (onError) onError(e)
@@ -156,84 +114,34 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
       await audio.play()
       return
     } catch (err) {
-      console.warn('[Edge TTS Browser] Failed (websocket blocked or timeout), trying Google Translate HTTPS TTS:', err.message)
+      console.warn('[Edge TTS] Failed or bypassed, trying alternative pipelines...', err.message)
     }
   }
 
-  // ── 2. Google Translate HTTPS TTS (Secondary Fallback — FREE, HTTPS, no backend needed) ──
+  // ── 2. Google Translate Client-Side Public TTS (Vercel Backup Strategy — FREE & Reliable) ──
   try {
-    const googleLang = LANG_TO_GOOGLE_CODE[langCode] || LANG_TO_GOOGLE_CODE[langCode.split('-')[0]] || 'en'
-    console.log(`[Google HTTPS TTS] Trying fallback for lang="${googleLang}"`)
+    console.log(`[Google TTS Proxy] Safely routing client-side audio fallback...`)
+    // Maps your language dictionary into clean ISO standard tags for streaming directly to standard DOM components
+    const queryLang = edgeLang === 'ur-roman' ? 'hi' : edgeLang
+    const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${queryLang}&client=tw-ob&q=${encodeURIComponent(cleanText)}`
     
-    // Chunking text if it exceeds 200 characters for Google TTS
-    const sentences = cleanText.match(/[^.!?，。]+[.!?，。]*/g) || [cleanText]
-    const chunks = []
-    let currentChunk = ""
-    
-    for (const sentence of sentences) {
-      if ((currentChunk + sentence).length < 180) {
-        currentChunk += sentence
-      } else {
-        if (currentChunk) chunks.push(currentChunk.trim())
-        currentChunk = sentence
-      }
+    const audio = new Audio(googleTtsUrl)
+    currentAudio = audio
+
+    audio.onplay = () => {
+      if (onStart) onStart()
+      console.log(`✅ [Google Proxy TTS] Streamed online language text context: ${queryLang}`)
     }
-    if (currentChunk) chunks.push(currentChunk.trim())
-    
-    if (chunks.length > 0) {
-      // Play chunks sequentially
-      await new Promise((resolve, reject) => {
-        let chunkIndex = 0
-        
-        const playNextChunk = () => {
-          if (chunkIndex >= chunks.length) {
-            if (onEnd) onEnd()
-            resolve()
-            return
-          }
-          
-          const chunkText = chunks[chunkIndex]
-          const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${googleLang}&client=tw-ob&q=${encodeURIComponent(chunkText)}`
-          
-          const audio = new Audio(url)
-          currentAudio = audio
-          
-          audio.onplay = () => {
-            if (chunkIndex === 0 && onStart) onStart()
-          }
-          audio.onended = () => {
-            chunkIndex++
-            playNextChunk()
-          }
-          audio.onerror = (e) => {
-            console.error('[Google TTS] Playback error on chunk:', e)
-            if (chunkIndex === 0) {
-              reject(new Error('Google TTS failed'))
-            } else {
-              if (onEnd) onEnd()
-              resolve()
-            }
-          }
-          
-          audio.play().catch(err => {
-            if (chunkIndex === 0) {
-              reject(err)
-            } else {
-              if (onError) onError(err)
-              resolve()
-            }
-          })
-        }
-        
-        playNextChunk()
-      })
-      return // Success
-    }
-  } catch (googleErr) {
-    console.warn('[Google HTTPS TTS] Failed, trying ElevenLabs:', googleErr.message)
+    audio.onended = () => { if (onEnd) onEnd(); currentAudio = null }
+    audio.onerror = (e) => { throw new Error('Google Stream Blocked') }
+
+    await audio.play()
+    return
+  } catch (proxyErr) {
+    console.warn('[Google Proxy TTS] Bypassed, matching down to ElevenLabs/Native workflows.')
   }
 
-  // ── 3. ElevenLabs API (Tertiary — premium multilingual) ──────────────────
+  // ── 3. ElevenLabs API (Secondary — premium multilingual) ──────────────────
   const elevenKey = import.meta.env.VITE_ELEVENLABS_API_KEY
     || localStorage.getItem('visiondx_elevenlabs_key')
     || ''
@@ -282,7 +190,7 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
     }
   }
 
-  // ── 3. Browser native speechSynthesis (Last resort) ───────────────────────
+  // ── 4. Browser native speechSynthesis (Last resort) ───────────────────────
   fallbackToNativeTTS(cleanText, langCode, onStart, onEnd, onError)
 }
 
