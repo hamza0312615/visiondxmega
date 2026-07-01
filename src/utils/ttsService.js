@@ -247,7 +247,6 @@ function fallbackToNativeTTS(cleanText, langCode, onStart, onEnd, onError) {
   }
 
   if (bestVoice) utterance.voice = bestVoice
-
   utterance.onstart = () => { if (onStart) onStart() }
   utterance.onend = () => { if (onEnd) onEnd(); currentUtterance = null }
   utterance.onerror = (e) => { if (onError) onError(e); currentUtterance = null }
