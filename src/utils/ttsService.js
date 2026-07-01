@@ -87,7 +87,7 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
   const edgeEnabled = import.meta.env.VITE_EDGE_TTS_ENABLED !== 'false' && !isVercelProduction
   const edgeLang = LANG_TO_EDGE_CODE[langCode] || LANG_TO_EDGE_CODE[langCode.split('-')[0]] || 'en'
 
-  // ── 1. Microsoft Edge Neural TTS (Primary — skipped automatically if on Vercel to avoid CORS breakdown) ──
+  // ── 1. Microsoft Edge Neural TTS (Primary — skipped automatically if on Vercel) ──
   if (edgeEnabled) {
     try {
       const url = `${backendUrl}/api/tts?lang=${edgeLang}&text=${encodeURIComponent(cleanText)}`
@@ -115,30 +115,42 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
       return
     } catch (err) {
       console.warn('[Edge TTS] Failed or bypassed, trying alternative pipelines...', err.message)
+      if (currentAudio) currentAudio = null
     }
   }
 
   // ── 2. Google Translate Client-Side Public TTS (Vercel Backup Strategy — FREE & Reliable) ──
   try {
     console.log(`[Google TTS Proxy] Safely routing client-side audio fallback...`)
-    // Maps your language dictionary into clean ISO standard tags for streaming directly to standard DOM components
     const queryLang = edgeLang === 'ur-roman' ? 'hi' : edgeLang
     const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${queryLang}&client=tw-ob&q=${encodeURIComponent(cleanText)}`
     
     const audio = new Audio(googleTtsUrl)
     currentAudio = audio
 
+    // Fixed: Wrapped in a robust promise to catch stream loading blocks safely
+    await new Promise((resolve, reject) => {
+      audio.oncanplaythrough = resolve
+      audio.onerror = () => reject(new Error('Google Stream Loading Blocked'))
+      audio.load()
+    })
+
     audio.onplay = () => {
       if (onStart) onStart()
       console.log(`✅ [Google Proxy TTS] Streamed online language text context: ${queryLang}`)
     }
     audio.onended = () => { if (onEnd) onEnd(); currentAudio = null }
-    audio.onerror = (e) => { throw new Error('Google Stream Blocked') }
+    audio.onerror = (e) => {
+      console.error('[Google TTS] Continuous playback stream error:', e)
+      if (onError) onError(e)
+      currentAudio = null
+    }
 
     await audio.play()
     return
   } catch (proxyErr) {
-    console.warn('[Google Proxy TTS] Bypassed, matching down to ElevenLabs/Native workflows.')
+    console.warn('[Google Proxy TTS] Bypassed, matching down to ElevenLabs/Native workflows.', proxyErr.message)
+    if (currentAudio) currentAudio = null
   }
 
   // ── 3. ElevenLabs API (Secondary — premium multilingual) ──────────────────
@@ -176,17 +188,27 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
       const audio = new Audio(audioUrl)
       currentAudio = audio
 
+      await new Promise((resolve, reject) => {
+        audio.oncanplaythrough = resolve
+        audio.onerror = reject
+        audio.load()
+      })
+
       audio.onplay = () => {
         if (onStart) onStart()
         console.log(`✅ [ElevenLabs] Playing: "${cleanText.substring(0, 40)}..."`)
       }
       audio.onended = () => { if (onEnd) onEnd(); currentAudio = null }
-      audio.onerror = (e) => { if (onError) onError(e); currentAudio = null }
+      audio.onerror = (e) => {
+        if (onError) onError(e)
+        currentAudio = null
+      }
 
       await audio.play()
       return
     } catch (err) {
       console.warn('[ElevenLabs] Failed, falling back to browser native:', err.message)
+      if (currentAudio) currentAudio = null
     }
   }
 
