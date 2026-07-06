@@ -7,6 +7,7 @@ export async function generateEdgeTTSInBrowser(text, voiceName) {
   return new Promise((resolve, reject) => {
     try {
       const ws = new WebSocket('wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4');
+      ws.binaryType = 'arraybuffer';
 
       // Add a timeout just in case it hangs
       const timeoutId = setTimeout(() => {
@@ -46,7 +47,7 @@ export async function generateEdgeTTSInBrowser(text, voiceName) {
       };
       
       const audioChunks = [];
-      ws.onmessage = async (event) => {
+      ws.onmessage = (event) => {
         if (typeof event.data === 'string') {
           if (event.data.includes('Path: turn.end')) {
             clearTimeout(timeoutId);
@@ -55,9 +56,8 @@ export async function generateEdgeTTSInBrowser(text, voiceName) {
             resolve(blob);
           }
         } else {
-          // Binary data (audio mp3)
-          // The binary message contains text headers before the audio payload
-          const buffer = await event.data.arrayBuffer();
+          // Binary data (audio mp3) - direct ArrayBuffer
+          const buffer = event.data;
           const view = new Uint8Array(buffer);
           
           // Search for end of headers "\r\n\r\n" (0x0d 0x0a 0x0d 0x0a)

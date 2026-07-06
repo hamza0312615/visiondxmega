@@ -6,10 +6,11 @@ import { demoPresets } from '../data/demoPresets'
 import ResultCard from '../components/ResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Skeleton from '../components/Skeleton'
+import LiveSleepDashboard from '../components/sleepsense/LiveSleepDashboard'
 
 export default function SleepAnalyzer() {
   const { saveToCHW } = useSaveToCHW()
-  const [activeTab, setActiveTab] = useState('form') // 'form' or 'audio'
+  const [activeTab, setActiveTab] = useState('form') // 'form', 'audio', or 'live'
 
   // Form State
   const [bedtime, setBedtime] = useState('22:30')
@@ -301,29 +302,42 @@ export default function SleepAnalyzer() {
           {/* Tabs & Form / Audio Input */}
           <div className="lg:col-span-2 space-y-6 glass-card p-6 sm:p-8 rounded-3xl border border-white/10 shadow-xl">
             {/* Tab Navigation */}
-            <div className="flex p-1 rounded-2xl bg-navy-900 border border-white/10 gap-1 shadow-inner">
+            <div className="flex p-1 rounded-2xl bg-navy-900 border border-white/10 gap-1 shadow-inner overflow-x-auto">
               <button
                 type="button"
                 onClick={() => setActiveTab('form')}
-                className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                className={`flex-1 min-w-[150px] py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
                   activeTab === 'form' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30 shadow-md' : 'text-white/60 hover:text-white'
                 }`}
               >
-                📝 Quick Clinical Form
+                📝 Clinical Form
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('audio')}
-                className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                className={`flex-1 min-w-[150px] py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
                   activeTab === 'audio' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30 shadow-md' : 'text-white/60 hover:text-white'
                 }`}
               >
-                🎙️ Upload Sleep Audio
+                🎙️ Upload Audio
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('live')}
+                className={`flex-1 min-w-[150px] py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                  activeTab === 'live' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-md' : 'text-white/60 hover:text-white'
+                }`}
+              >
+                📡 Live Sensing (IoT)
               </button>
             </div>
 
-            {/* Quick Form Tab */}
-            {activeTab === 'form' ? (
+            {/* Content Rendering based on Tab */}
+            {activeTab === 'live' ? (
+              <div className="fade-in pt-4 relative min-h-[600px] bg-slate-950 rounded-2xl overflow-hidden border border-slate-800">
+                <LiveSleepDashboard onSave={loadWeeklyHistory} />
+              </div>
+            ) : activeTab === 'form' ? (
               <form onSubmit={handleFormAnalyze} className="space-y-6 fade-in pt-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>

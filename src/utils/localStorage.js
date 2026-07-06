@@ -280,3 +280,32 @@ export function getDemoData(moduleType) {
   }
 }
 
+/**
+ * Sync offline localStorage history to SQLite backend
+ */
+export async function syncOfflineHistory() {
+  const history = getHistory()
+  if (history.length === 0) return
+  
+  const patientId = localStorage.getItem('visiondx_current_patient_id') || 'default_patient'
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/history/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        patientId: patientId,
+        records: history
+      }),
+    })
+    if (res.ok) {
+      console.log('[Sync DB] Offline history synced to SQLite database successfully')
+    }
+  } catch (err) {
+    console.warn('[Sync DB] Offline history sync skipped (backend offline or unreachable)', err)
+  }
+}
+

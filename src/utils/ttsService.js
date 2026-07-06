@@ -19,6 +19,7 @@ const ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'
 
 let currentAudio = null
 let currentUtterance = null
+let isCancelled = false
 
 /**
  * Map from app-level lang codes → backend lang codes for Edge TTS
@@ -60,6 +61,17 @@ const EDGE_VOICES = {
   'en-gb': 'en-GB-SoniaNeural',
 }
 
+const GOOGLE_CLOUD_VOICES = {
+  'ur': 'ur-PK-Standard-A',
+  'ur-roman': 'hi-IN-Neural2-A',
+  'hi': 'hi-IN-Neural2-A',
+  'ar': 'ar-XA-Wavenet-B',
+  'bn': 'bn-IN-Wavenet-A',
+  'pa': 'pa-IN-Wavenet-A',
+  'en': 'en-US-Neural2-F',
+  'en-gb': 'en-GB-Neural2-A'
+}
+
 const LANG_TO_GOOGLE_CODE = {
   'ur-PK':    'ur',
   'ur':       'ur',
@@ -85,6 +97,7 @@ const LANG_TO_GOOGLE_CODE = {
 
 /** Stop all active speech immediately */
 export function cancelSpeech() {
+  isCancelled = true
   if (currentAudio) {
     currentAudio.pause()
     currentAudio.currentTime = 0
@@ -122,9 +135,62 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
     .trim()
 
   cancelSpeech()
+  
+  // reset cancellation for new speech
+  isCancelled = false
 
   const edgeEnabled = import.meta.env.VITE_EDGE_TTS_ENABLED !== 'false'
   const edgeLang = LANG_TO_EDGE_CODE[langCode] || LANG_TO_EDGE_CODE[langCode.split('-')[0]] || 'en'
+
+  // ── 0. Google Cloud Text-to-Speech API (Premium — BEST QUALITY) ──────────
+  const googleKey = import.meta.env.VITE_GOOGLE_TRANSLATE_API_KEY;
+  if (googleKey) {
+    try {
+      const googleCloudLang = edgeLang; // reuse same lookup
+      const voiceName = GOOGLE_CLOUD_VOICES[googleCloudLang] || GOOGLE_CLOUD_VOICES['en'];
+      const langPrefix = voiceName.substring(0, 5); // e.g. "ur-PK"
+
+      console.log(`[Google Cloud TTS] Requesting voice="${voiceName}"`);
+      const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${googleKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: { text: cleanText },
+          voice: { languageCode: langPrefix, name: voiceName },
+          audioConfig: { audioEncoding: 'MP3' }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Google Cloud TTS failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.audioContent) {
+        const audio = new Audio('data:audio/mp3;base64,' + data.audioContent);
+        currentAudio = audio;
+
+        audio.onplay = () => {
+          if (onStart) onStart();
+          console.log(`✅ [Google Cloud TTS] playing "${cleanText.substring(0, 50)}..."`);
+        };
+        audio.onended = () => {
+          if (onEnd) onEnd();
+          currentAudio = null;
+        };
+        audio.onerror = (e) => {
+          console.error('[Google Cloud TTS] Playback error:', e);
+          if (onError) onError(e);
+          currentAudio = null;
+        };
+
+        await audio.play();
+        return;
+      }
+    } catch (err) {
+      console.warn('[Google Cloud TTS] Failed, falling back to Edge TTS:', err.message);
+    }
+  }
 
   // ── 1. Microsoft Edge Neural TTS (Primary — FREE, best quality for South Asian langs) ──
   if (edgeEnabled) {
@@ -165,17 +231,31 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
     const googleLang = LANG_TO_GOOGLE_CODE[langCode] || LANG_TO_GOOGLE_CODE[langCode.split('-')[0]] || 'en'
     console.log(`[Google HTTPS TTS] Trying fallback for lang="${googleLang}"`)
     
-    // Chunking text if it exceeds 200 characters for Google TTS
-    const sentences = cleanText.match(/[^.!?，。]+[.!?，。]*/g) || [cleanText]
+    // Improved chunking text for Google TTS (max 80 chars limit for safety with Urdu/non-ASCII)
+    // First split by sentences, then by words if sentences are still too long.
+    const rawSentences = cleanText.split(/(?<=[.!?，。;\n])\s+/);
     const chunks = []
     let currentChunk = ""
     
-    for (const sentence of sentences) {
-      if ((currentChunk + sentence).length < 180) {
-        currentChunk += sentence
+    for (const sentence of rawSentences) {
+      if (sentence.length >= 80) {
+        // Sentence is too long, split by words
+        const words = sentence.split(' ');
+        for (const word of words) {
+          if ((currentChunk + ' ' + word).length < 80) {
+            currentChunk += (currentChunk ? ' ' : '') + word;
+          } else {
+            if (currentChunk) chunks.push(currentChunk.trim());
+            currentChunk = word;
+          }
+        }
       } else {
-        if (currentChunk) chunks.push(currentChunk.trim())
-        currentChunk = sentence
+        if ((currentChunk + ' ' + sentence).length < 80) {
+          currentChunk += (currentChunk ? ' ' : '') + sentence;
+        } else {
+          if (currentChunk) chunks.push(currentChunk.trim());
+          currentChunk = sentence;
+        }
       }
     }
     if (currentChunk) chunks.push(currentChunk.trim())
@@ -186,8 +266,8 @@ export async function speakText(text, langCode = 'en-US', options = {}) {
         let chunkIndex = 0
         
         const playNextChunk = () => {
-          if (chunkIndex >= chunks.length) {
-            if (onEnd) onEnd()
+          if (isCancelled || chunkIndex >= chunks.length) {
+            if (!isCancelled && onEnd) onEnd()
             resolve()
             return
           }

@@ -46,7 +46,7 @@ export async function translateText(text, targetLangCode, sourceLangCode = 'en')
   const source = LANG_MAPPING[sourceLangCode] || sourceLangCode.split('-')[0]
 
   // No translation needed
-  if (target === source || target === 'en' && source === 'en') {
+  if (target === source || (target === 'en' && source === 'en')) {
     return text
   }
 
@@ -55,7 +55,31 @@ export async function translateText(text, targetLangCode, sourceLangCode = 'en')
     return text
   }
 
-  // ── 1. MyMemory API (Primary, free, 10k words/day) ──────────────────────
+  const googleKey = import.meta.env.VITE_GOOGLE_TRANSLATE_API_KEY;
+
+  // ── 1. Google Cloud Translation API (Primary, Premium) ───────────────────
+  if (googleKey) {
+    try {
+      const url = `https://translation.googleapis.com/language/translate/v2?key=${googleKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: text, source, target, format: 'text' })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const translated = data?.data?.translations?.[0]?.translatedText;
+        if (translated) {
+          console.log(`✅ [Google Translate] ${source} → ${target}: "${translated.substring(0, 60)}..."`);
+          return translated;
+        }
+      }
+    } catch (err) {
+      console.warn('[Google Translate] Translation failed, falling back:', err.message);
+    }
+  }
+
+  // ── 2. MyMemory API (Secondary, free, 10k words/day) ───────────────────
   try {
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${target}`
     const res = await fetch(url)
@@ -71,7 +95,7 @@ export async function translateText(text, targetLangCode, sourceLangCode = 'en')
     console.warn('[MyMemory] Translation failed:', err.message)
   }
 
-  // ── 2. LibreTranslate / ArgosTranslate (Fallback) ───────────────────────
+  // ── 3. LibreTranslate / ArgosTranslate (Tertiary Fallback) ───────────────
   try {
     const res = await fetch('https://translate.argosopentech.com/translate', {
       method: 'POST',

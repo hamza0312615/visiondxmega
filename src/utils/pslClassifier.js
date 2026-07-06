@@ -158,30 +158,48 @@ export const classifyUrduAlphabet = (gestureId) => {
 // Helper to determine Euclidean distance
 const d = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
 
-const getHandStates = (landmarks) => {
+// Distance- and rotation-invariant landmark normalization
+const normalizeLandmarks = (landmarks) => {
+  if (!landmarks || landmarks.length === 0) return landmarks;
   const wrist = landmarks[0];
-  const thumbTip = landmarks[4];
-  const indexTip = landmarks[8];
-  const middleTip = landmarks[12];
-  const ringTip = landmarks[16];
-  const pinkyTip = landmarks[20];
+  // scale factor based on palm size: wrist (0) to middle MCP (9)
+  const dx = landmarks[9].x - wrist.x;
+  const dy = landmarks[9].y - wrist.y;
+  const dz = landmarks[9].z - wrist.z;
+  const scale = Math.hypot(dx, dy, dz) || 1.0;
+  
+  return landmarks.map(p => ({
+    x: (p.x - wrist.x) / scale,
+    y: (p.y - wrist.y) / scale,
+    z: (p.z - wrist.z) / scale
+  }));
+};
 
-  // Finger extensions
-  const indexExt = landmarks[8].y < landmarks[6].y;
-  const middleExt = landmarks[12].y < landmarks[10].y;
-  const ringExt = landmarks[16].y < landmarks[14].y;
-  const pinkyExt = landmarks[20].y < landmarks[18].y;
+const getHandStates = (landmarks) => {
+  const norm = normalizeLandmarks(landmarks);
+  const wrist = norm[0];
+  const thumbTip = norm[4];
+  const indexTip = norm[8];
+  const middleTip = norm[12];
+  const ringTip = norm[16];
+  const pinkyTip = norm[20];
 
-  // Thumb extension: check if thumb tip is far from index knuckle (5) and wrist (0)
-  const thumbExt = d(landmarks[4], landmarks[9]) > d(landmarks[2], landmarks[9]) * 1.15;
+  // Finger extensions (using normalized landmarks)
+  const indexExt = norm[8].y < norm[6].y;
+  const middleExt = norm[12].y < norm[10].y;
+  const ringExt = norm[16].y < norm[14].y;
+  const pinkyExt = norm[20].y < norm[18].y;
+
+  // Thumb extension (using normalized landmarks)
+  const thumbExt = d(norm[4], norm[9]) > d(norm[2], norm[9]) * 1.15;
 
   const extCount = (indexExt ? 1 : 0) + (middleExt ? 1 : 0) + (ringExt ? 1 : 0) + (pinkyExt ? 1 : 0);
   
   const isOpen = indexExt && middleExt && ringExt && pinkyExt;
   const isFist = !indexExt && !middleExt && !ringExt && !pinkyExt;
 
-  // Palm forward heuristic: check if palm is facing camera
-  const isPalmForward = landmarks[0].z < -0.01 || Math.abs(landmarks[5].z - landmarks[17].z) < 0.08;
+  // Palm forward: z-coordinates are normalized relative to palm size!
+  const isPalmForward = norm[0].z < -0.1 || Math.abs(norm[5].z - norm[17].z) < 0.85;
 
   return {
     wrist,
@@ -199,7 +217,8 @@ const getHandStates = (landmarks) => {
     isOpen,
     isFist,
     isPalmForward,
-    landmarks
+    landmarks: norm,
+    rawLandmarks: landmarks
   };
 };
 
@@ -216,9 +235,15 @@ export const classifyGesture = (handList, handednessList, threshold = 0.65) => {
   if (count === 2) {
     const [h1, h2] = hands;
     
-    const distBetweenWrists = Math.hypot(h1.wrist.x - h2.wrist.x, h1.wrist.y - h2.wrist.y);
-    const distBetweenIndexTips = Math.hypot(h1.indexTip.x - h2.indexTip.x, h1.indexTip.y - h2.indexTip.y);
-    const distBetweenPalms = Math.hypot(h1.landmarks[9].x - h2.landmarks[9].x, h1.landmarks[9].y - h2.landmarks[9].y);
+    // Scale distance using the average hand size to make it distance-invariant
+    const palm1 = d(h1.rawLandmarks[0], h1.rawLandmarks[9]);
+    const palm2 = d(h2.rawLandmarks[0], h2.rawLandmarks[9]);
+    const avgPalm = (palm1 + palm2) / 2 || 0.15;
+    const normFactor = avgPalm / 0.15; // 0.15 is the standard screen scale baseline
+
+    const distBetweenWrists = d(h1.rawLandmarks[0], h2.rawLandmarks[0]) / normFactor;
+    const distBetweenIndexTips = d(h1.rawLandmarks[8], h2.rawLandmarks[8]) / normFactor;
+    const distBetweenPalms = d(h1.rawLandmarks[9], h2.rawLandmarks[9]) / normFactor;
 
     let combinedMatch = null;
 
@@ -243,13 +268,13 @@ export const classifyGesture = (handList, handednessList, threshold = 0.65) => {
     }
 
     // 5. Help (Madad) - One flat hand supporting a fist
-    else if ((h1.isOpen && h2.isFist && Math.abs(h2.wrist.y - h1.wrist.y) < 0.18 * tol) ||
-             (h2.isOpen && h1.isFist && Math.abs(h1.wrist.y - h2.wrist.y) < 0.18 * tol)) {
+    else if ((h1.isOpen && h2.isFist && Math.abs(h2.rawLandmarks[0].y - h1.rawLandmarks[0].y) / normFactor < 0.18 * tol) ||
+             (h2.isOpen && h1.isFist && Math.abs(h1.rawLandmarks[0].y - h2.rawLandmarks[0].y) / normFactor < 0.18 * tol)) {
       combinedMatch = { id: 'help', english: "Help", urdu: "مدد", description: "One fist resting on a flat open palm." };
     }
 
     // 6. Door - Both flat hands side-by-side at similar height, separated outward
-    else if (h1.isOpen && h2.isOpen && Math.abs(h1.wrist.y - h2.wrist.y) < 0.08 * tol && distBetweenPalms > 0.15 * tol) {
+    else if (h1.isOpen && h2.isOpen && Math.abs(h1.rawLandmarks[0].y - h2.rawLandmarks[0].y) / normFactor < 0.08 * tol && distBetweenPalms > 0.15 * tol) {
       combinedMatch = { id: 'door', english: "Door", urdu: "دروازہ", description: "Both flat hands side-by-side, opening outwards." };
     }
 
@@ -289,6 +314,9 @@ export const classifyGesture = (handList, handednessList, threshold = 0.65) => {
 const classifySingleHand = (h, tol) => {
   if (!h) return null;
 
+  const palmSize = d(h.rawLandmarks[0], h.rawLandmarks[9]);
+  const normFactor = palmSize / 0.15 || 1.0;
+
   // 1. Good / Welldone / Thumbs Up
   if (h.thumbExt && h.extCount <= 1 && h.thumbTip.y < h.landmarks[2].y) {
     return { id: 'welldone', english: "Well Done!", urdu: "بہت اچھے", description: "Thumbs up gesture." };
@@ -310,12 +338,13 @@ const classifySingleHand = (h, tol) => {
   }
 
   // 5. Fan (Index finger pointing up high)
-  if (h.indexExt && h.extCount === 1 && h.indexTip.y < 0.32) {
+  if (h.indexExt && h.extCount === 1 && h.rawLandmarks[8].y < 0.32) {
     return { id: 'fan', english: "Fan", urdu: "پنکھا", description: "Index finger pointing up." };
   }
 
   // 6. We (Pointing index sideways)
-  if (h.indexExt && h.extCount === 1 && Math.abs(h.indexTip.x - h.wrist.x) > 0.16 / tol) {
+  const distWe = Math.abs(h.rawLandmarks[8].x - h.rawLandmarks[0].x) / normFactor;
+  if (h.indexExt && h.extCount === 1 && distWe > 0.16 / tol) {
     return { id: 'we', english: "We", urdu: "ہم", description: "Sideways index finger sweep." };
   }
 
@@ -325,27 +354,30 @@ const classifySingleHand = (h, tol) => {
   }
 
   // 8. Bed / Sleep (Flat open hand next to cheek/ear)
-  if (h.isOpen && h.wrist.y < 0.45 && Math.abs(h.wrist.x - 0.5) > 0.12 / tol && Math.abs(h.indexTip.x - h.wrist.x) < 0.06 * tol) {
+  const distBed = Math.abs(h.rawLandmarks[8].x - h.rawLandmarks[0].x) / normFactor;
+  if (h.isOpen && h.rawLandmarks[0].y < 0.45 && Math.abs(h.rawLandmarks[0].x - 0.5) > 0.12 / tol && distBed < 0.06 * tol) {
     return { id: 'bed', english: "Bed", urdu: "بستر", description: "Open palm resting near ear/cheek." };
   }
 
   // 9. Assalamualaikum (Salute: flat palm tilted horizontally near head/forehead)
-  if (h.isOpen && h.indexTip.y < 0.32 && Math.abs(h.indexTip.x - h.wrist.x) > 0.12 / tol) {
+  const distAsal = Math.abs(h.rawLandmarks[8].x - h.rawLandmarks[0].x) / normFactor;
+  if (h.isOpen && h.rawLandmarks[8].y < 0.32 && distAsal > 0.12 / tol) {
     return { id: 'assalamualaikum', english: "Assalam-o-Alaikum", urdu: "السلام علیکم", description: "Salute hand raised to forehead." };
   }
 
   // 10. Goodbye / Hello / Hi (Open hand waving upright and to the side of head)
-  if ((h.isOpen || h.extCount >= 3) && h.indexTip.y < 0.45 && Math.abs(h.wrist.x - 0.5) > 0.08) {
+  if ((h.isOpen || h.extCount >= 3) && h.rawLandmarks[8].y < 0.45 && Math.abs(h.rawLandmarks[0].x - 0.5) > 0.08) {
     return { id: 'hi/hello', english: "Hello / Hi", urdu: "ہیلو", description: "Waving open flat hand near head." };
   }
 
   // 11. Bench / Table (Flat palm down, knuckles horizontal)
-  if (h.isOpen && Math.abs(h.indexTip.y - h.pinkyTip.y) < 0.05 * tol && h.wrist.y > 0.52) {
+  const distBench = Math.abs(h.rawLandmarks[8].y - h.rawLandmarks[20].y) / normFactor;
+  if (h.isOpen && distBench < 0.05 * tol && h.rawLandmarks[0].y > 0.52) {
     return { id: 'bench', english: "Bench", urdu: "بینچ", description: "Flat hand arcing downwards." };
   }
 
   // 12. Mine (Flat palm against center of the chest)
-  if (h.isOpen && h.wrist.y > 0.5) {
+  if (h.isOpen && h.rawLandmarks[0].y > 0.5) {
     return { id: 'mine', english: "Mine", urdu: "میرا", description: "Flat palm on chest." };
   }
 
