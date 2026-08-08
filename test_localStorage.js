@@ -35,6 +35,10 @@ global.window = {
   dispatchEvent(event) {}
 }
 
+// Mock Date.now() to avoid ID collisions in fast tests
+let mockNow = 1717910400000;
+global.Date.now = () => mockNow++;
+
 // 2. Import Module
 import {
   isDemoMode,
@@ -67,6 +71,31 @@ try {
   setDemoMode(false)
   assert.strictEqual(isDemoMode(), false, 'Demo mode should toggle back to false')
   console.log('  [✓] Test 1 Passed successfully.')
+
+  // Test 1.1: Extended Demo Mode Edge Cases
+  console.log('\n  Running Test 1.1: Extended Demo Mode Edge Cases...')
+
+  // Direct localStorage manipulation
+  global.localStorage.setItem('visiondx_is_demo_mode', 'true')
+  assert.strictEqual(isDemoMode(), true, 'isDemoMode() should return true when storage is "true"')
+
+  global.localStorage.setItem('visiondx_is_demo_mode', 'false')
+  assert.strictEqual(isDemoMode(), false, 'isDemoMode() should return false when storage is "false"')
+
+  global.localStorage.removeItem('visiondx_is_demo_mode')
+  assert.strictEqual(isDemoMode(), false, 'isDemoMode() should return false when storage is null')
+
+  global.localStorage.setItem('visiondx_is_demo_mode', 'random_string')
+  assert.strictEqual(isDemoMode(), false, 'isDemoMode() should return false when storage is random string')
+
+  // Verifying setDemoMode effect on localStorage
+  setDemoMode(true)
+  assert.strictEqual(global.localStorage.getItem('visiondx_is_demo_mode'), 'true', 'setDemoMode(true) should set storage to "true"')
+
+  setDemoMode(false)
+  assert.strictEqual(global.localStorage.getItem('visiondx_is_demo_mode'), 'false', 'setDemoMode(false) should set storage to "false"')
+
+  console.log('  [✓] Test 1.1 Passed successfully.')
 
   // Test 2: History CRUD Operations
   console.log('\n  Running Test 2: History Operations...')
