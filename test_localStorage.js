@@ -1,6 +1,9 @@
 import assert from 'assert'
 
 // 1. Mock Browser Environment
+let mockNow = Date.now();
+global.Date.now = () => mockNow++;
+
 global.localStorage = {
   store: {},
   getItem(key) {
