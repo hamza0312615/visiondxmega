@@ -151,7 +151,7 @@ export function setSiteLanguage(lang) {
 
 const IS_DEMO_KEY = 'visiondx_is_demo_mode'
 const RISK_LOG_KEY = 'visiondx_riskLog'
-const HEATMAP_DATA_KEY = 'visiondx_heatmapData'
+export const HEATMAP_DATA_KEY = 'visiondx_heatmapData'
 const HEATMAP_OPT_IN_KEY = 'visiondx_heatmapOptIn'
 
 export function isDemoMode() {
