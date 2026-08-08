@@ -1,4 +1,5 @@
 import { formatTime } from '../utils/localStorage'
+import { escapeHTML } from '../utils/security'
 
 export function usePrintReport() {
   const printReport = (moduleName, data) => {
@@ -156,15 +157,15 @@ export function usePrintReport() {
       <div class="patient-details-grid">
         <div>
           <div class="detail-label">Patient Name</div>
-          <div class="detail-value">${patientName}</div>
+          <div class="detail-value">${escapeHTML(patientName)}</div>
         </div>
         <div>
           <div class="detail-label">Age / Gender</div>
-          <div class="detail-value">${patientAge}y / ${patientGender}</div>
+          <div class="detail-value">${escapeHTML(patientAge)}y / ${escapeHTML(patientGender)}</div>
         </div>
         <div>
           <div class="detail-label">Diagnostic Module</div>
-          <div class="detail-value" style="color: #00d4aa; text-transform: uppercase;">${moduleName}</div>
+          <div class="detail-value" style="color: #00d4aa; text-transform: uppercase;">${escapeHTML(moduleName)}</div>
         </div>
       </div>
       
@@ -174,7 +175,7 @@ export function usePrintReport() {
       
       <div style="font-size: 11px; color: #707070; margin-bottom: 10px;">Scanned on ${formattedDate}</div>
       
-      <div class="print-body">${(data.rawResponse || data.summary || '')}</div>
+      <div class="print-body">${escapeHTML(data.rawResponse || data.summary || '')}</div>
       
       <div class="print-footer">
         <div>Validated by: VisionDX Autonomous Triage Suite</div>
