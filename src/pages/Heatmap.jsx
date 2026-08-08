@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { getHeatmapData, saveHeatmapEntry, getHeatmapOptIn, setHeatmapOptIn } from '../utils/localStorage'
-import { Link } from 'react-router-dom'
 
 export default function Heatmap() {
   const [optIn, setOptIn] = useState(false)
