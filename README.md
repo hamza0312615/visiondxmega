@@ -4,7 +4,7 @@
 
 # 🏥 VisionDX Mega Platform
 
-### *Pakistan Ka Digital Doctor • پاکستان کا ڈیجیٹل ڈاکٹر*
+### *Pakistan Ka Digital Doctor • پاکستان کا ڈیجیٹل ڈاکٹر (V1.0.1)*
 
 **12 AI-powered diagnostic tools unified into a single client-side medical intelligence platform**
 
